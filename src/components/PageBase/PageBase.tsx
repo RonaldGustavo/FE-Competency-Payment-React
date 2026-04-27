@@ -19,17 +19,46 @@ import { logout } from '../../features/auth/AuthSlice';
 import { getCookie } from '../../utils/cookieHelper';
 import useDeviceType from '../../utils/useDeviceType';
 import Colors from '../../constant/color';
+import { Menu } from '../../constant/menu';
 
-function PageBase(): React.JSX.Element {
+interface PageBaseProps {
+  userName: string;
+  userRole: string;
+}
+
+function PageBase({ userName, userRole }: PageBaseProps): React.JSX.Element {
   const { isMobile } = useDeviceType();
   const { pathname } = useLocation();
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
-
-  const [manualToggle, setManualToggle] = useState(false);
-
-  const isSidebarOpen = isMobile ? manualToggle : true;
   const topRef = useRef<HTMLDivElement>(null);
+
+  const [isSidebarOpen, setSidebarOpen] = useState<boolean>(true);
+
+  const isActive = (path: string) => pathname === path;
+
+  const breadcrumb = pathname
+    .split('/')
+    .filter(Boolean)
+    .map((v) => v.charAt(0).toUpperCase() + v.slice(1))
+    .join(' / ');
+
+  const handleSignOut = () => {
+    dispatch(logout());
+    navigate('/sign-in');
+  };
+
+  const handleToggleSidebar = () => {
+    setSidebarOpen((prev) => !prev);
+  };
+
+  useEffect(() => {
+    if (isMobile) {
+      setSidebarOpen(false);
+    } else {
+      setSidebarOpen(true);
+    }
+  }, [isMobile]);
 
   useEffect(() => {
     topRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -47,21 +76,6 @@ function PageBase(): React.JSX.Element {
     return () => clearInterval(interval);
   }, [navigate, dispatch]);
 
-  const handleSignOut = () => {
-    dispatch(logout());
-    navigate('/sign-in');
-  };
-
-  const toggleSidebar = () => {
-    setManualToggle((p) => !p);
-  };
-
-  const breadcrumb = pathname
-    .split('/')
-    .filter(Boolean)
-    .map((v) => v.charAt(0).toUpperCase() + v.slice(1))
-    .join(' / ');
-
   return (
     <Flex h="100vh" bg={Colors.bgPrimary}>
       <Box
@@ -69,7 +83,10 @@ function PageBase(): React.JSX.Element {
         bg="#222D31"
         color="white"
         transition="0.3s"
-        display={isMobile && !isSidebarOpen ? 'none' : 'block'}
+        overflow="hidden"
+        position={isMobile ? 'absolute' : 'relative'}
+        zIndex={isMobile ? 20 : 1}
+        height="100vh"
       >
         <Flex
           align="center"
@@ -78,18 +95,34 @@ function PageBase(): React.JSX.Element {
           borderBottom={`1px solid ${Colors.borderPrimary}`}
         >
           <Text fontWeight="bold">
-            {isSidebarOpen ? 'Ronald Gustavo' : 'RG'}
+            {isSidebarOpen ? 'Ronald Payment' : 'RG'}
           </Text>
         </Flex>
 
         <Flex direction="column" p={4} gap={3}>
-          <Text cursor="pointer">Dashboard</Text>
-          <Text cursor="pointer">Survey</Text>
-          <Text cursor="pointer">Report</Text>
+          {Menu.map((item) => {
+            const Icon = item.icon;
+
+            return (
+              <Flex
+                key={item.path}
+                align="center"
+                gap={3}
+                cursor="pointer"
+                p={2}
+                borderRadius="6px"
+                onClick={() => navigate(item.path)}
+                bg={isActive(item.path) ? `${Colors.info}` : 'transparent'}
+                color={isActive(item.path) ? 'white' : 'gray.300'}
+              >
+                <Icon />
+                {isSidebarOpen && <Text>{item.label}</Text>}
+              </Flex>
+            );
+          })}
         </Flex>
       </Box>
 
-      {/* MAIN */}
       <Flex direction="column" flex="1">
         <Box ref={topRef} />
 
@@ -101,10 +134,14 @@ function PageBase(): React.JSX.Element {
             px={4}
             borderBottom={`1px solid ${Colors.borderPrimary}`}
           >
-            <Flex align="center" gap={3}>
+            <Flex
+              align="center"
+              gap={3}
+              paddingLeft={isMobile ? (isSidebarOpen ? '0px' : '60px') : '0px'}
+            >
               <IconButton
                 aria-label="toggle sidebar"
-                onClick={toggleSidebar}
+                onClick={handleToggleSidebar}
                 variant="ghost"
               >
                 <FaBars />
@@ -120,10 +157,10 @@ function PageBase(): React.JSX.Element {
 
                   <Box textAlign="left">
                     <Text fontSize="sm" fontWeight="600">
-                      Nama User
+                      {userName}
                     </Text>
                     <Text fontSize="xs" color="gray.500">
-                      Admin
+                      {userRole}
                     </Text>
                   </Box>
                 </Flex>
@@ -143,12 +180,20 @@ function PageBase(): React.JSX.Element {
           </Flex>
         </Box>
 
-        <Flex flex="1" direction="column" overflow="auto">
+        <Flex
+          flex="1"
+          direction="column"
+          overflow="auto"
+          paddingLeft={isMobile ? (isSidebarOpen ? '0px' : '60px') : '0px'}
+        >
           <Flex as="main" p={4} flex="1">
             <Outlet />
           </Flex>
 
-          <Footer />
+          <Footer
+            name={userName}
+            appVersion={import.meta.env.VITE_APP_VERSION}
+          />
         </Flex>
       </Flex>
     </Flex>
