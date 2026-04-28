@@ -6,12 +6,13 @@ import type { Column } from '../../interface';
 import dataRefund from '../../mock/dataRefund.json';
 import { statusColors } from '../../constant/status';
 import PageHeader from '../../components/PageHeader/PageHeader';
+import { FaEdit, FaEye, FaTrash } from 'react-icons/fa';
 
 const Refund = (): React.JSX.Element => {
   const columns: Column[] = [
     {
       key: 'id',
-      header: 'Refund ID',
+      header: 'ID',
     },
     {
       key: 'transactionId',
@@ -20,6 +21,10 @@ const Refund = (): React.JSX.Element => {
     {
       key: 'customerName',
       header: 'Customer Name',
+    },
+    {
+      key: 'customerName',
+      header: 'Name',
     },
     {
       key: 'amount',
@@ -69,8 +74,29 @@ const Refund = (): React.JSX.Element => {
         p={6}
         boxShadow={Colors.cardShadow}
       >
-        <Table data={dataRefund} columns={columns} />
-      </Box>
+<Table
+  data={dataRefund}
+  columns={columns}
+  actions={[
+    {
+      icon: <FaEye />,
+      label: 'View',
+      onClick: (row) => console.log(row),
+    },
+    {
+      icon: <FaEdit />,
+      label: 'Edit',
+      onClick: (row) => console.log(row),
+    },
+    {
+      icon: <FaTrash />,
+      label: 'Delete',
+      colorScheme: 'red',
+      onClick: (row) => console.log(row),
+    },
+  ]}
+/>
+    </Box>
     </VStack>
   );
 };
