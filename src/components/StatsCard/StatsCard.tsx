@@ -23,6 +23,7 @@ const StatsCard: React.FC<StatsCardProps> = ({
 }) => {
   return (
     <Box
+      h="100%"
       bg={Colors.white}
       p={6}
       borderRadius="12px"

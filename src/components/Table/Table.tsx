@@ -17,7 +17,7 @@ interface TableAction {
   icon: React.ReactElement;
   label: string;
   onClick: (row: any) => void;
-  colorScheme?: string;
+  bg?: string;
   isDisabled?: (row: any) => boolean;
 }
 
@@ -42,8 +42,10 @@ const Table = ({ data, columns, actions }: TableProps) => {
     const lower = searchTerm.toLowerCase();
     return data.filter((row) =>
       columns.some((col) =>
-        String(row[col.key] ?? '').toLowerCase().includes(lower)
-      )
+        String(row[col.key] ?? '')
+          .toLowerCase()
+          .includes(lower),
+      ),
     );
   }, [data, searchTerm, columns]);
 
@@ -57,10 +59,7 @@ const Table = ({ data, columns, actions }: TableProps) => {
     }
   }, [currentPage, totalPages]);
 
-  const paginatedData = filteredData.slice(
-    startIndex,
-    startIndex + pageSize
-  );
+  const paginatedData = filteredData.slice(startIndex, startIndex + pageSize);
 
   const getPages = () => {
     const pages: number[] = [];
@@ -81,14 +80,18 @@ const Table = ({ data, columns, actions }: TableProps) => {
       <Flex justify="space-between" align="center" wrap="wrap" gap={3}>
         <Box maxW="280px" w="full">
           <Input
-            placeholder="Cari data..."
+            placeholder="Search..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             size="sm"
             borderRadius="14px"
             bg="gray.50"
             borderColor={Colors.borderPrimary}
-            _focus={{ bg: 'white', borderColor: 'blue.400', boxShadow: '0 0 0 1px rgba(59,130,246,0.25)' }}
+            _focus={{
+              bg: 'white',
+              borderColor: 'blue.400',
+              boxShadow: '0 0 0 1px rgba(59,130,246,0.25)',
+            }}
           />
         </Box>
 
@@ -98,7 +101,9 @@ const Table = ({ data, columns, actions }: TableProps) => {
           </Text>
           <chakra.select
             value={pageSize}
-            onChange={(e: ChangeEvent<HTMLSelectElement>) => setPageSize(Number(e.target.value))}
+            onChange={(e: ChangeEvent<HTMLSelectElement>) =>
+              setPageSize(Number(e.target.value))
+            }
             style={{
               width: '110px',
               borderRadius: '14px',
@@ -189,7 +194,9 @@ const Table = ({ data, columns, actions }: TableProps) => {
                       borderBottom="1px solid"
                       borderColor="#E2E8F0"
                     >
-                      {col.render ? col.render(row[col.key], row) : row[col.key]}
+                      {col.render
+                        ? col.render(row[col.key], row)
+                        : row[col.key]}
                     </ChakraTable.Cell>
                   ))}
 
@@ -211,12 +218,12 @@ const Table = ({ data, columns, actions }: TableProps) => {
                             key={action.label}
                             aria-label={action.label}
                             size="sm"
-                            variant="ghost"
-                            colorScheme={action.colorScheme || 'blue'}
+                            bg={action.bg || 'blue.500'}
+                            color="white"
+                            _hover={{ bg: action.bg || 'blue.600' }}
                             onClick={() => action.onClick(row)}
                             disabled={action.isDisabled?.(row)}
-                            borderRadius="12px"
-                            _hover={{ bg: `${action.colorScheme || 'blue'}.50` }}
+                            borderRadius="14px"
                             p={2}
                           >
                             {action.icon}

@@ -1,4 +1,4 @@
-import { Box, Grid, GridItem } from '@chakra-ui/react';
+import { Box, Grid, GridItem, Text } from '@chakra-ui/react';
 import {
   FaCreditCard,
   FaMoneyBillWave,
@@ -6,44 +6,34 @@ import {
   FaUndoAlt,
 } from 'react-icons/fa';
 import StatsCard from '../../components/StatsCard/StatsCard';
-import TransactionTable from '../../components/TransactionTable/TransactionTable';
 import WelcomeCard from '../../components/WelcomeCard/WelcomeCard';
 import Colors from '../../constant/color';
+import type { Column } from '../../interface';
+import Table from '../../components/Table/Table';
+import dataTransaction from '../../mock/dataTransaction.json'
 
-const mockTransactions = [
-  {
-    id: '1',
-    description: 'Payment - Acme Corp',
-    amount: '$2,500.00',
-    status: 'completed' as const,
-    date: 'Apr 24, 2026',
-    type: 'payment' as const,
-  },
-  {
-    id: '2',
-    description: 'Invoice - TechStart Inc',
-    amount: '$1,200.50',
-    status: 'pending' as const,
-    date: 'Apr 25, 2026',
-    type: 'invoice' as const,
-  },
-  {
-    id: '3',
-    description: 'Refund - Customer Return',
-    amount: '-$500.00',
-    status: 'completed' as const,
-    date: 'Apr 23, 2026',
-    type: 'refund' as const,
-  },
-  {
-    id: '4',
-    description: 'Payment - Global Services',
-    amount: '$3,750.00',
-    status: 'completed' as const,
-    date: 'Apr 22, 2026',
-    type: 'payment' as const,
-  },
-];
+  const columns: Column[] = [
+    {
+      key: 'description',
+      header: 'Description',
+    },
+    {
+      key: 'type',
+      header: 'Type',
+    },
+    {
+      key: 'amount',
+      header: 'Amount',
+    },
+    {
+      key: 'status',
+      header: 'Status',
+    },
+    {
+      key: 'date',
+      header: 'Date',
+    },
+  ];
 
 const Dashboard = () => {
   return (
@@ -100,12 +90,24 @@ const Dashboard = () => {
         </GridItem>
       </Grid>
 
-
-      <Box mt={8}>
-        <TransactionTable
-          title="Recent Transactions"
-          transactions={mockTransactions}
-        />
+              <Box  mb={4}>
+        <Text fontSize="lg" fontWeight="700" color={Colors.textPrimary}>
+          Recent Transactions
+        </Text>
+      </Box>
+      <Box
+        bg={Colors.white}
+        borderRadius="12px"
+        border={`1px solid ${Colors.borderPrimary}`}
+        p={6}
+        boxShadow={Colors.cardShadow}
+      >
+        <>
+        <Table
+          data={dataTransaction}
+          columns={columns}
+          />
+          </>
       </Box>
     </Box>
   );

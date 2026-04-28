@@ -1,12 +1,12 @@
 import React from 'react';
-import { Box, VStack } from '@chakra-ui/react';
+import { Box, Button, Flex, VStack } from '@chakra-ui/react';
 import Table from '../../components/Table/Table';
 import Colors from '../../constant/color';
 import type { Column } from '../../interface';
 import dataRefund from '../../mock/dataRefund.json';
 import { statusColors } from '../../constant/status';
 import PageHeader from '../../components/PageHeader/PageHeader';
-import { FaEdit, FaEye, FaTrash } from 'react-icons/fa';
+import { FaEdit, FaEye, FaPlus } from 'react-icons/fa';
 
 const Refund = (): React.JSX.Element => {
   const columns: Column[] = [
@@ -65,7 +65,23 @@ const Refund = (): React.JSX.Element => {
 
   return (
     <VStack gap={6} align="stretch">
-      <PageHeader title='Refund Management' subtitle='Manage and track refund requests' />
+      <PageHeader
+        title="Refund Management"
+        subtitle="Manage and track refund requests"
+      />
+
+      <Flex justifyContent="end">
+        <Button
+          size="sm"
+          bg={'#2e8c73'}
+          minW={['100%', 125]}
+          borderRadius={'5px'}
+          onClick={() => console.log('show modal form refund')}
+        >
+          <FaPlus />
+          Request Refund
+        </Button>
+      </Flex>
 
       <Box
         bg={Colors.white}
@@ -74,29 +90,25 @@ const Refund = (): React.JSX.Element => {
         p={6}
         boxShadow={Colors.cardShadow}
       >
-<Table
-  data={dataRefund}
-  columns={columns}
-  actions={[
-    {
-      icon: <FaEye />,
-      label: 'View',
-      onClick: (row) => console.log(row),
-    },
-    {
-      icon: <FaEdit />,
-      label: 'Edit',
-      onClick: (row) => console.log(row),
-    },
-    {
-      icon: <FaTrash />,
-      label: 'Delete',
-      colorScheme: 'red',
-      onClick: (row) => console.log(row),
-    },
-  ]}
-/>
-    </Box>
+        <Table
+          data={dataRefund}
+          columns={columns}
+          actions={[
+            {
+              icon: <FaEye />,
+              label: 'View',
+              onClick: (row) => console.log(row),
+              bg: 'blue.600',
+            },
+            {
+              icon: <FaEdit />,
+              label: 'Edit',
+              onClick: (row) => console.log(row),
+              bg: '#de943a',
+            },
+          ]}
+        />
+      </Box>
     </VStack>
   );
 };
