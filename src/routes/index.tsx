@@ -9,7 +9,7 @@ export default function Routes(): React.JSX.Element {
 
   return (
     <BrowserRouter>
-      {!isAuthenticated ? <PublicRoutes /> : <PrivateRoutes />}
+      {isAuthenticated ? <PublicRoutes /> : <PrivateRoutes />}
     </BrowserRouter>
   );
 }

@@ -1,0 +1,51 @@
+[
+  {
+    "merchant_name": "Toko Sukses Jaya",
+    "type": "TOP_UP",
+    "amount": 500000,
+    "status": "PENDING",
+    "processed_at": null
+  },
+  {
+    "merchant_name": "Warung Makan Enak",
+    "type": "TOP_UP",
+    "amount": 250000,
+    "status": "SUCCESS",
+    "processed_at": "2026-04-27"
+  },
+  {
+    "merchant_name": "Digital Store ID",
+    "type": "TOP_UP",
+    "amount": 1000000,
+    "status": "FAILED",
+    "processed_at": "2026-04-26"
+  },
+  {
+    "merchant_name": "Coffee Corner",
+    "type": "TOP_UP",
+    "amount": 150000,
+    "status": "SUCCESS",
+    "processed_at": "2026-04-25"
+  },
+  {
+    "merchant_name": "Fashion Hub",
+    "type": "TOP_UP",
+    "amount": 750000,
+    "status": "PENDING",
+    "processed_at": null
+  },
+  {
+    "merchant_name": "Game Center Indo",
+    "type": "TOP_UP",
+    "amount": 300000,
+    "status": "SUCCESS",
+    "processed_at": "2026-04-28"
+  },
+  {
+    "merchant_name": "Book Store Nusantara",
+    "type": "TOP_UP",
+    "amount": 120000,
+    "status": "FAILED",
+    "processed_at": "2026-04-24"
+  }
+]

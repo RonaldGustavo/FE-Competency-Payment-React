@@ -27,10 +27,6 @@ const Refund = (): React.JSX.Element => {
       header: 'Customer Name',
     },
     {
-      key: 'customerName',
-      header: 'Name',
-    },
-    {
       key: 'amount',
       header: 'Amount',
       render: (value) => `$${(value as number).toFixed(2)}`,

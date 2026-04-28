@@ -3,7 +3,7 @@ import { Box, Button, Flex, VStack } from '@chakra-ui/react';
 import Table from '../../components/Table/Table';
 import Colors from '../../constant/color';
 import type { Column } from '../../interface';
-import dataRefund from '../../mock/dataRefund.json';
+import dataInvoice from '../../mock/dataInvoice.json';
 import { statusColors } from '../../constant/status';
 import PageHeader from '../../components/PageHeader/PageHeader';
 import { FaEdit, FaEye, FaPlus } from 'react-icons/fa';
@@ -14,25 +14,20 @@ const Invoice = (): React.JSX.Element => {
   const isAdmin = user?.role === 'Admin';
   const columns: Column[] = [
     {
-      key: 'id',
-      header: 'ID',
+      key: 'no_invoice',
+      header: 'No Invoice',
     },
     {
-      key: 'transactionId',
-      header: 'Transaction ID',
-    },
-    {
-      key: 'customerName',
-      header: 'Customer Name',
-    },
-    {
-      key: 'customerName',
-      header: 'Name',
+      key: 'name_merchant',
+      header: 'Nama Merchant',
     },
     {
       key: 'amount',
       header: 'Amount',
-      render: (value) => `$${(value as number).toFixed(2)}`,
+    },
+    {
+      key: 'method',
+      header: 'Method',
     },
     {
       key: 'status',
@@ -57,12 +52,12 @@ const Invoice = (): React.JSX.Element => {
       },
     },
     {
-      key: 'requestDate',
-      header: 'Request Date',
+      key: 'due_date',
+      header: 'Due Date',
     },
     {
-      key: 'reason',
-      header: 'Reason',
+      key: 'created_at',
+      header: 'Created At',
     },
   ];
 
@@ -96,7 +91,7 @@ const Invoice = (): React.JSX.Element => {
         boxShadow={Colors.cardShadow}
       >
         <Table
-          data={dataRefund}
+          data={dataInvoice}
           columns={columns}
           actions={[
             {
