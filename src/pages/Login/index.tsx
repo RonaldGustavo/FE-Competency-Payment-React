@@ -4,83 +4,110 @@ import {
   Button,
   Container,
   Input,
-  Stack,
   Text,
-  InputGroup,
-  IconButton,
   Flex,
+  VStack,
+  Icon,
 } from '@chakra-ui/react';
 import { HiEye, HiEyeOff } from 'react-icons/hi';
+import { FaUser } from 'react-icons/fa';
+import Colors from '../../constant/color';
 
 export default function Login(): React.JSX.Element {
-  const [showPassword, setShowPassword] = useState<boolean>(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   return (
-    <Flex minH="100vh" align="center" justify="center" bg="gray.50" px={4}>
-      <Container maxW="md">
-        <Stack
-          bg="white"
-          p={{ base: 6, md: 8 }}
-          borderRadius="2xl"
-          boxShadow="sm"
-          gap="6"
+    <Flex
+      minH="100vh"
+      align="center"
+      justify="center"
+      bg={`linear-gradient(135deg, ${Colors.primaryLight} 0%, ${Colors.bgPrimary} 100%)`}
+      px={4}
+    >
+      <Container maxW="lg">
+        <VStack
+          bg={Colors.cardBg}
+          p={{ base: 8, md: 10 }}
+          borderRadius="3xl"
+          boxShadow={Colors.cardShadow}
+          gap="8"
         >
-          {/* //NOTE - Header login */}
-          <Stack gap="1" textAlign="center">
-            <Text fontSize="2xl" fontWeight="bold">
-              Login
+          <VStack gap="3" textAlign="center">
+            <Flex gap="3" alignItems="center">
+              <Icon as={FaUser} boxSize="10" color={Colors.primary} />
+              <Text fontSize="3xl" fontWeight="bold" color={Colors.textPrimary}>
+                Ronald Payment
+              </Text>
+            </Flex>
+            <Text fontSize="md" color={Colors.textSecondary}>
+              Please sign in to continue
             </Text>
-            <Text fontSize="sm" color="gray.500">
-              Silakan login untuk melanjutkan
-            </Text>
-          </Stack>
+          </VStack>
 
-          {/* //NOTE - Form login */}
-          <Stack gap="4">
-            <Box>
-              <Text fontSize="sm" mb="1" color="gray.600">
+          <VStack gap="6" w="full">
+            <Box w="full">
+              <Text
+                fontSize="sm"
+                mb="2"
+                color={Colors.textPrimary}
+                fontWeight="medium"
+              >
                 Username
               </Text>
               <Input
-                name="nik"
-                placeholder="Masukkan Username"
-                size="md"
-                borderRadius="lg"
+                placeholder="Enter your username"
+                size="lg"
+                borderRadius="xl"
+                borderColor={Colors.borderPrimary}
+                _focus={{
+                  borderColor: Colors.primary,
+                  boxShadow: `0 0 0 1px ${Colors.primary}`,
+                }}
               />
             </Box>
 
-            <Box>
-              <Text fontSize="sm" mb="1" color="gray.600">
+            <Box w="full" position="relative">
+              <Text
+                fontSize="sm"
+                mb="2"
+                color={Colors.textPrimary}
+                fontWeight="medium"
+              >
                 Password
               </Text>
 
-              <InputGroup
-                endElement={
-                  <IconButton
-                    aria-label="toggle password"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setShowPassword((prev) => !prev)}
-                  >
-                    {showPassword ? <HiEyeOff /> : <HiEye />}
-                  </IconButton>
-                }
-              >
-                <Input
-                  name="password"
-                  placeholder="Masukkan password"
-                  type={showPassword ? 'text' : 'password'}
-                  borderRadius="lg"
-                />
-              </InputGroup>
-            </Box>
-          </Stack>
+              <Input
+                type={showPassword ? 'text' : 'password'}
+                placeholder="Enter your password"
+                size="lg"
+                borderRadius="xl"
+                borderColor={Colors.borderPrimary}
+                pr="45px"
+              />
 
-          {/* //NOTE - Button login    */}
-          <Button colorScheme="blue" size="md" borderRadius="lg">
-            Masuk
+              <Box
+                position="absolute"
+                right="12px"
+                top="38px"
+                cursor="pointer"
+                onClick={() => setShowPassword((prev) => !prev)}
+              >
+                {showPassword ? <HiEyeOff /> : <HiEye />}
+              </Box>
+            </Box>
+          </VStack>
+
+          <Button
+            w="full"
+            size="lg"
+            borderRadius="xl"
+            bg={Colors.primary}
+            color="white"
+            _hover={{ bg: Colors.primaryDark }}
+          >
+            Sign In
           </Button>
-        </Stack>
+        </VStack>
       </Container>
     </Flex>
   );

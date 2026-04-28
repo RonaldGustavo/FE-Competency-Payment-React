@@ -1,4 +1,4 @@
-import { Flex, Text } from '@chakra-ui/react';
+import { Flex, Text, HStack } from '@chakra-ui/react';
 import React from 'react';
 import Colors from '../../constant/color';
 
@@ -13,31 +13,44 @@ function Footer({
 }: FooterProps): React.JSX.Element {
   return (
     <Flex
-      bg={Colors.bgPrimary}
+      bg={Colors.white}
       borderTop={`1px solid ${Colors.borderPrimary}`}
       w="100%"
-      px={4}
-      py={3}
-      minH="50px"
+      px={6}
+      py={4}
+      minH="60px"
       justifyContent={{ base: 'center', md: 'space-between' }}
       alignItems="center"
       flexWrap="wrap"
-      gap={2}
+      gap={4}
     >
-      <Text
-        fontSize="sm"
-        textAlign={{ base: 'center', md: 'left' }}
-        color="gray.600"
-      >
-        © {new Date().getFullYear()}{' '}
-        <Text as="span" fontWeight="600" color={Colors.info}>
+      <HStack gap={1} justify={{ base: 'center', md: 'flex-start' }}>
+        <Text
+          fontSize="sm"
+          color={Colors.textSecondary}
+          fontWeight="500"
+        >
+          © {new Date().getFullYear()}
+        </Text>
+        <Text
+          as="span"
+          fontSize="sm"
+          fontWeight="600"
+          color={Colors.primary}
+        >
           {name}
         </Text>
-      </Text>
+      </HStack>
 
-      <Text fontSize="sm" fontWeight="600" color="gray.600">
-        Version: {appVersion}
-      </Text>
+      <HStack gap={4} justify="center">
+        <Text 
+          fontSize="xs" 
+          color={Colors.textMuted}
+          fontWeight="500"
+        >
+          Version {appVersion}
+        </Text>
+      </HStack>
     </Flex>
   );
 }
