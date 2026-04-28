@@ -12,6 +12,7 @@ import {
 import { FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 import Colors from '../../constant/color';
 import type { Column } from '../../interface';
+import { Tooltip } from '../Tooltip/Tooltip';
 
 interface TableAction {
   icon: React.ReactElement;
@@ -163,7 +164,7 @@ const Table = ({ data, columns, actions }: TableProps) => {
                   position="sticky"
                   right={0}
                   bg="#DDEAFE"
-                  zIndex={3}
+                  zIndex={1}
                   borderLeft="1px solid"
                   borderColor="#BBD2F6"
                   boxShadow="-4px 0 10px -6px rgba(0, 0, 0, 0.08)"
@@ -214,20 +215,22 @@ const Table = ({ data, columns, actions }: TableProps) => {
                     >
                       <Flex gap={2} justify="center">
                         {actions.map((action) => (
-                          <Button
-                            key={action.label}
-                            aria-label={action.label}
-                            size="sm"
-                            bg={action.bg || 'blue.500'}
-                            color="white"
-                            _hover={{ bg: action.bg || 'blue.600' }}
-                            onClick={() => action.onClick(row)}
-                            disabled={action.isDisabled?.(row)}
-                            borderRadius="14px"
-                            p={2}
-                          >
-                            {action.icon}
-                          </Button>
+                          <Tooltip content={action.label} >
+                            <Button
+                              key={action.label}
+                              aria-label={action.label}
+                              size="sm"
+                              bg={action.bg || 'blue.500'}
+                              color="white"
+                              _hover={{ bg: action.bg || 'blue.600' }}
+                              onClick={() => action.onClick(row)}
+                              disabled={action.isDisabled?.(row)}
+                              borderRadius="14px"
+                              p={2}
+                            >
+                              {action.icon}
+                            </Button>
+                          </Tooltip>
                         ))}
                       </Flex>
                     </ChakraTable.Cell>

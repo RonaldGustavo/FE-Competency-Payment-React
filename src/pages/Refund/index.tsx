@@ -6,9 +6,13 @@ import type { Column } from '../../interface';
 import dataRefund from '../../mock/dataRefund.json';
 import { statusColors } from '../../constant/status';
 import PageHeader from '../../components/PageHeader/PageHeader';
-import { FaEdit, FaEye, FaPlus } from 'react-icons/fa';
+import { FaEdit, FaPlus } from 'react-icons/fa';
+import { useAppSelector } from '../../config/hook';
 
 const Refund = (): React.JSX.Element => {
+  const user = useAppSelector((state) => state.auth.user);
+  const isAdmin = user?.role === 'Admin';
+
   const columns: Column[] = [
     {
       key: 'id',
@@ -70,18 +74,20 @@ const Refund = (): React.JSX.Element => {
         subtitle="Manage and track refund requests"
       />
 
-      <Flex justifyContent="end">
-        <Button
-          size="sm"
-          bg={'#2e8c73'}
-          minW={['100%', 125]}
-          borderRadius={'5px'}
-          onClick={() => console.log('show modal form refund')}
-        >
-          <FaPlus />
-          Request Refund
-        </Button>
-      </Flex>
+      {!isAdmin && (
+        <Flex justifyContent="end">
+          <Button
+            size="sm"
+            bg={'#2e8c73'}
+            minW={['100%', 125]}
+            borderRadius={'5px'}
+            onClick={() => console.log('show modal form refund')}
+          >
+            <FaPlus />
+            Request Refund
+          </Button>
+        </Flex>
+      )}
 
       <Box
         bg={Colors.white}
@@ -93,20 +99,18 @@ const Refund = (): React.JSX.Element => {
         <Table
           data={dataRefund}
           columns={columns}
-          actions={[
-            {
-              icon: <FaEye />,
-              label: 'View',
-              onClick: (row) => console.log(row),
-              bg: 'blue.600',
-            },
-            {
-              icon: <FaEdit />,
-              label: 'Edit',
-              onClick: (row) => console.log(row),
-              bg: '#de943a',
-            },
-          ]}
+          actions={
+            isAdmin
+              ? [
+                  {
+                    icon: <FaEdit />,
+                    label: 'Edit',
+                    onClick: (row) => console.log(row),
+                    bg: '#de943a',
+                  },
+                ]
+              : undefined
+          }
         />
       </Box>
     </VStack>

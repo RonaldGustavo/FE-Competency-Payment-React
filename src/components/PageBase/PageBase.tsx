@@ -158,7 +158,7 @@ function PageBase({ userName, userRole }: PageBaseProps): React.JSX.Element {
             {isSidebarOpen ? 'Main Menu' : ''}
           </Text>
 
-          {Menu.map((item) => {
+          {Menu.filter((item) => item.roles.includes(userRole)).map((item) => {
             const Icon = item.icon;
             const active = isActive(item.path);
 
@@ -234,7 +234,7 @@ function PageBase({ userName, userRole }: PageBaseProps): React.JSX.Element {
           })}
         </Flex>
 
-        {isSidebarOpen && (
+        {isSidebarOpen && userRole === 'Merchant' && (
           <Box
             px={4}
             py={4}
