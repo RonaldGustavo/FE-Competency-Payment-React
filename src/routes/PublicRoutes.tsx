@@ -1,9 +1,12 @@
 import { Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import React, { useEffect } from 'react'
 import { useAppSelector } from '../config/hook'
-import { Login, SignUp } from '../pages'
+import { Login, Payment, PaymentDetail, SignUp } from '../pages'
 
 const publicPaths = ['/sign-in', '/sign-up'];
+
+const isPublicPath = (pathname: string) =>
+  publicPaths.includes(pathname) || pathname === '/payment' || pathname.startsWith('/payment/');
 
 export default function PublicRoutes (): React.JSX.Element {
   const location = useLocation()
@@ -11,7 +14,7 @@ export default function PublicRoutes (): React.JSX.Element {
   const isAuthenticated = useAppSelector((state) => state.auth.isAuthenticated);
 
   useEffect(() => {
-    if (!publicPaths.includes(location.pathname)) {
+    if (!isPublicPath(location.pathname)) {
       navigate('/sign-in')
     }
   }, [location.pathname, navigate])
@@ -26,6 +29,8 @@ export default function PublicRoutes (): React.JSX.Element {
     <Routes>
       <Route path="/sign-in" element={<Login />} />
       <Route path="/sign-up" element={<SignUp />} />
+      <Route path="/payment" element={<Payment />} />
+      <Route path="/payment/:invoiceNumber" element={<PaymentDetail />} />
     </Routes>
   )
 }

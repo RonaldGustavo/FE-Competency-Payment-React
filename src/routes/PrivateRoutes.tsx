@@ -1,6 +1,6 @@
 import React from 'react';
 import { Route, Routes, Navigate } from 'react-router-dom';
-import { ErrorPage, NotFound } from '../pages';
+import { ErrorPage, NotFound, Payment, PaymentDetail } from '../pages';
 import { PageBase } from '../components';
 import Path from '../constant/path';
 import { Menu } from '../constant/menu';
@@ -15,6 +15,9 @@ function PrivateRoutes(): React.ReactElement {
         path="/"
         element={<Navigate to={`/${Path.dashboard}`} replace />}
       />
+
+      <Route path="/payment" element={<Payment />} />
+      <Route path="/payment/:invoiceNumber" element={<PaymentDetail />} />
 
       <Route
         path="/"

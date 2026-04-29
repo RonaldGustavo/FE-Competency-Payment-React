@@ -10,7 +10,7 @@ import {
   Icon,
 } from '@chakra-ui/react';
 import { HiEye, HiEyeOff } from 'react-icons/hi';
-import { FaUser } from 'react-icons/fa';
+import { FaFileInvoiceDollar, FaUser } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import Colors from '../../constant/color';
 
@@ -108,6 +108,20 @@ export default function Login(): React.JSX.Element {
             _hover={{ bg: Colors.primaryDark }}
           >
             Sign In
+          </Button>
+
+          <Button
+            w="full"
+            size="lg"
+            borderRadius="xl"
+            variant="outline"
+            borderColor={Colors.info}
+            color={Colors.info}
+            _hover={{ bg: '#06B6D415' }}
+            onClick={() => navigate('/payment')}
+          >
+            <FaFileInvoiceDollar />
+            Bayar Invoice
           </Button>
 
           <VStack gap="4" w="full">
