@@ -37,6 +37,6 @@ export const Menu = [
     path: '/wallet',
     icon: FaWallet,
     element: Wallet,
-    roles: ['Merchant'],
+    roles: ['Admin','Merchant'],
   },
 ];

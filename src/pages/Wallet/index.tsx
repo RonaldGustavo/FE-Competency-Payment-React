@@ -1,5 +1,5 @@
 import React, { useState, type FormEvent } from 'react';
-import { Box, Button, Flex, Input, Text, VStack } from '@chakra-ui/react';
+import { Box, Button, Flex, Grid, Input, Text, VStack } from '@chakra-ui/react';
 import Swal from 'sweetalert2';
 import Table from '../../components/Table/Table';
 import Colors from '../../constant/color';
@@ -7,7 +7,7 @@ import type { Column } from '../../interface/global';
 import dataWallet from '../../mock/dataWallet.json';
 import { statusColors } from '../../constant/status';
 import PageHeader from '../../components/PageHeader/PageHeader';
-import { FaPlus } from 'react-icons/fa';
+import { FaCheck, FaEdit, FaPlus, FaTimes } from 'react-icons/fa';
 import AppModal from '../../components/AppModal/AppModal';
 import {
   formatRupiah,
@@ -15,6 +15,7 @@ import {
   isFutureOrToday,
   isValidEmail,
 } from '../../utils/validation';
+import { useAppSelector } from '../../config/hook';
 
 interface WalletRow {
   merchant_name: string;
@@ -43,9 +44,14 @@ const initialWalletForm: WalletForm = {
 };
 
 const Wallet = (): React.JSX.Element => {
+  const user = useAppSelector((state) => state.auth.user);
+  const isAdmin = user?.role === 'Admin';
+
   const [walletRows, setWalletRows] = useState<WalletRow[]>(
     dataWallet as WalletRow[],
   );
+  const [selectedWallet, setSelectedWallet] = useState<any>(null);
+
   const [isTopUpModalOpen, setIsTopUpModalOpen] = useState(false);
   const [walletForm, setWalletForm] = useState<WalletForm>(initialWalletForm);
   const [formErrors, setFormErrors] = useState<WalletFormErrors>({});
@@ -57,48 +63,48 @@ const Wallet = (): React.JSX.Element => {
   };
 
   const columns: Column[] = [
-  {
-    key: 'merchant_name',
-    header: 'Merchant',
-  },
-  {
-    key: 'type',
-    header: 'Type',
-  },
-  {
-    key: 'amount',
-    header: 'Amount',
-    render: (value) => formatRupiah(value as number),
-  },
-  {
-    key: 'status',
-    header: 'Status',
-    render: (value) => {
-      const status = value as keyof typeof statusColors;
-      const color = statusColors[status] ?? Colors.textSecondary;
-
-      return (
-        <Box
-          as="span"
-          px="2"
-          py="1"
-          borderRadius="md"
-          fontSize="xs"
-          fontWeight="bold"
-          bg={`${color}20`}
-          color={color}
-        >
-          {value}
-        </Box>
-      );
+    {
+      key: 'merchant_name',
+      header: 'Merchant',
     },
-  },
-  {
-    key: 'processed_at',
-    header: 'Processed At',
-    render: (value) => value || '-',
-  },
-];
+    {
+      key: 'type',
+      header: 'Type',
+    },
+    {
+      key: 'amount',
+      header: 'Amount',
+      render: (value) => formatRupiah(value as number),
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      render: (value) => {
+        const status = value as keyof typeof statusColors;
+        const color = statusColors[status] ?? Colors.textSecondary;
+
+        return (
+          <Box
+            as="span"
+            px="2"
+            py="1"
+            borderRadius="md"
+            fontSize="xs"
+            fontWeight="bold"
+            bg={`${color}20`}
+            color={color}
+          >
+            {value}
+          </Box>
+        );
+      },
+    },
+    {
+      key: 'processed_at',
+      header: 'Processed At',
+      render: (value) => value || '-',
+    },
+  ];
 
   const validateWalletForm = () => {
     const errors: WalletFormErrors = {};
@@ -177,6 +183,38 @@ const Wallet = (): React.JSX.Element => {
     });
   };
 
+  const handleRefundApproval = async (
+    wallet: any,
+    status: 'Approved' | 'Rejected',
+  ) => {
+    const isApprove = status === 'Approved';
+    const result = await Swal.fire({
+      icon: 'warning',
+      title: `${isApprove ? 'Approve' : 'Reject'} refund?`,
+      text: `${wallet.id} akan diubah menjadi ${status}.`,
+      showCancelButton: true,
+      confirmButtonText: isApprove ? 'Ya, approve' : 'Ya, reject',
+      cancelButtonText: 'Batal',
+      confirmButtonColor: isApprove ? Colors.success : Colors.danger,
+    });
+
+    if (!result.isConfirmed) return;
+
+    setWalletRows((currentRows) =>
+      currentRows.map((row: any) =>
+        row.id === wallet.id ? { ...row, status } : row,
+      ),
+    );
+    setSelectedWallet(null);
+
+    await Swal.fire({
+      icon: 'success',
+      title: 'Status refund diperbarui',
+      text: `${wallet.id} sekarang ${status}.`,
+      confirmButtonColor: Colors.primary,
+    });
+  };
+
   return (
     <VStack gap={6} align="stretch">
       <PageHeader
@@ -207,6 +245,18 @@ const Wallet = (): React.JSX.Element => {
         <Table
           data={walletRows}
           columns={columns}
+          actions={
+            isAdmin
+              ? [
+                  {
+                    icon: <FaEdit />,
+                    label: 'Approval',
+                    onClick: (row) => setSelectedWallet(row as any),
+                    bg: '#de943a',
+                  },
+                ]
+              : undefined
+          }
         />
       </Box>
 
@@ -332,6 +382,80 @@ const Wallet = (): React.JSX.Element => {
             </Box>
           </VStack>
         </form>
+      </AppModal>
+
+      <AppModal
+        isOpen={Boolean(selectedWallet)}
+        title="Approval Refund"
+        subtitle="Review request refund sebelum approve atau reject."
+        onClose={() => setSelectedWallet(null)}
+        maxW="720px"
+        footer={
+          <>
+            <Button
+              variant="outline"
+              borderRadius="xl"
+              onClick={() => setSelectedWallet(null)}
+            >
+              Tutup
+            </Button>
+            {selectedWallet && (
+              <>
+                <Button
+                  borderRadius="xl"
+                  bg={Colors.danger}
+                  color="white"
+                  _hover={{ bg: '#B91C1C' }}
+                  onClick={() =>
+                    handleRefundApproval(selectedWallet, 'Rejected')
+                  }
+                >
+                  <FaTimes />
+                  Reject
+                </Button>
+                <Button
+                  borderRadius="xl"
+                  bg={Colors.success}
+                  color="white"
+                  _hover={{ bg: '#047857' }}
+                  onClick={() =>
+                    handleRefundApproval(selectedWallet, 'Approved')
+                  }
+                >
+                  <FaCheck />
+                  Approve
+                </Button>
+              </>
+            )}
+          </>
+        }
+      >
+        {selectedWallet && (
+          <Grid templateColumns={{ base: '1fr', md: 'repeat(2, 1fr)' }} gap="4">
+            {[
+              ['Merchant', selectedWallet.merchant_name],
+              ['Type', selectedWallet.type],
+              ['Amount', selectedWallet.amount],
+              ['Status', selectedWallet.status],
+              ['Processed At', selectedWallet.processed_at],
+            ].map(([label, value]) => (
+              <Box
+                key={label}
+                border={`1px solid ${Colors.borderPrimary}`}
+                borderRadius="16px"
+                p="4"
+                bg={Colors.bgPrimary}
+              >
+                <Text fontSize="xs" color={Colors.textSecondary}>
+                  {label}
+                </Text>
+                <Text mt="1" fontWeight="700" color={Colors.textPrimary}>
+                  {value}
+                </Text>
+              </Box>
+            ))}
+          </Grid>
+        )}
       </AppModal>
     </VStack>
   );

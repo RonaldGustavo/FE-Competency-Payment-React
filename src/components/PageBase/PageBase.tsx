@@ -14,7 +14,7 @@ import { RiLoginBoxLine } from 'react-icons/ri';
 import { FaBars, FaUserCircle, FaTimes } from 'react-icons/fa';
 
 import Footer from '../Footer/Footer';
-import { useAppDispatch } from '../../config/hook';
+import { useAppDispatch, useAppSelector } from '../../config/hook';
 import { logout } from '../../features/auth/AuthSlice';
 import useDeviceType from '../../utils/useDeviceType';
 import Colors from '../../constant/color';
@@ -33,6 +33,7 @@ function PageBase({ userName, userRole }: PageBaseProps): React.JSX.Element {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const topRef = useRef<HTMLDivElement>(null);
+  const walletBalance = useAppSelector((state) => state.wallet.walletBalance);
 
   const [isSidebarOpen, setSidebarOpen] = useState<boolean>(true);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -265,7 +266,7 @@ function PageBase({ userName, userRole }: PageBaseProps): React.JSX.Element {
                 Balance
               </Text>
               <Text fontSize="lg" fontWeight="700">
-                $45.2K
+               Rp. {walletBalance}
               </Text>
             </Box>
           </Box>

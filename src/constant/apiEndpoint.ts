@@ -5,6 +5,9 @@ const ApiEndpoint = {
     profile: '/users/profile',
     logout: '/auth/logout',
   },
+  wallet: {
+    balance: '/wallet/balance'
+  }
 };
 
 export default ApiEndpoint;
