@@ -7,7 +7,7 @@ interface WelcomeCardProps {
   userRole: string;
 }
 
-const WelcomeCard: React.FC<WelcomeCardProps> = ({ userName, userRole }) => {
+const WelcomeCard: React.FC<WelcomeCardProps> = ({ userName }) => {
   const currentHour = new Date().getHours();
   const greeting =
     currentHour < 12 ? 'Good Morning' : currentHour < 18 ? 'Good Afternoon' : 'Good Evening';

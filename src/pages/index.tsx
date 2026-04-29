@@ -1,6 +1,7 @@
 //NOTE - Page
 export { default as Dashboard } from './Dashboard'
 export { default as Login } from './Login'
+export { default as SignUp } from './SignUp'
 export { default as Invoice } from './Invoice'
 export { default as Refund } from './Refund'
 export { default as Wallet } from './Wallet'

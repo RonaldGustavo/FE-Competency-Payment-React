@@ -11,10 +11,12 @@ import {
 } from '@chakra-ui/react';
 import { HiEye, HiEyeOff } from 'react-icons/hi';
 import { FaUser } from 'react-icons/fa';
+import { useNavigate } from 'react-router-dom';
 import Colors from '../../constant/color';
 
 export default function Login(): React.JSX.Element {
   const [showPassword, setShowPassword] = useState(false);
+  const navigate = useNavigate();
 
   return (
     <Flex
@@ -107,6 +109,29 @@ export default function Login(): React.JSX.Element {
           >
             Sign In
           </Button>
+
+          <VStack gap="4" w="full">
+            <Flex align="center" gap="3" w="full">
+              <Box h="1px" flex="1" bg={Colors.borderPrimary} />
+              <Text fontSize="sm" color={Colors.textMuted}>
+                Belum punya akun?
+              </Text>
+              <Box h="1px" flex="1" bg={Colors.borderPrimary} />
+            </Flex>
+
+            <Button
+              w="full"
+              size="lg"
+              borderRadius="xl"
+              variant="outline"
+              borderColor={Colors.primary}
+              color={Colors.primary}
+              _hover={{ bg: Colors.primaryLight }}
+              onClick={() => navigate('/sign-up')}
+            >
+              Daftar
+            </Button>
+          </VStack>
         </VStack>
       </Container>
     </Flex>
