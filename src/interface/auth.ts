@@ -5,6 +5,12 @@ export interface AuthUser {
   role: string;
 }
 
+export interface ApiResponse<T> {
+  status_code: number;
+  data: T;
+  system_message?: string;
+}
+
 export interface LoginPayload {
   email: string;
   password: string;
@@ -16,20 +22,16 @@ export interface SignUpPayload {
   password: string;
 }
 
-export interface AuthResponse {
-  token?: string;
-  accessToken?: string;
-  user?: AuthUser;
-  data?: Partial<AuthUser> & {
-    token?: string;
-    accessToken?: string;
-    user?: AuthUser;
-  };
-}
+export type LoginResponse = ApiResponse<{
+  token: string;
+  token_type?: string;
+  expires_in?: string;
+}>;
 
-export interface ApiErrorResponse {
-  system_message?: string;
-  message?: string;
-  error?: string;
-  errors?: Record<string, string[] | string>;
-}
+export type ProfileResponse = ApiResponse<{
+  user: AuthUser;
+}>;
+
+export type ApiErrorResponse = ApiResponse<null> & {
+  system_message: string;
+};

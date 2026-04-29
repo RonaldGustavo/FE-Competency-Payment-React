@@ -1,27 +1,24 @@
 import { api } from '../../config/http';
 import ApiEndpoint from '../../constant/apiEndpoint';
 import type {
-  AuthResponse,
-  AuthUser,
+  LoginResponse,
   LoginPayload,
+  ProfileResponse,
   SignUpPayload,
 } from '../../interface/auth';
 
 export const loginApi = async (payload: LoginPayload) => {
-  const response = await api.post<AuthResponse>(ApiEndpoint.auth.login, payload);
-  return response.data;
+  const response = await api.post<LoginResponse>(ApiEndpoint.auth.login, payload);
+  return response.data.data.token;
 };
 
 export const signUpApi = async (payload: SignUpPayload) => {
-  const response = await api.post<AuthResponse>(ApiEndpoint.auth.signup, payload);
-  return response.data;
+  await api.post(ApiEndpoint.auth.signup, payload);
 };
 
 export const getProfileApi = async () => {
-  const response = await api.get<AuthResponse | AuthUser>(
-    ApiEndpoint.auth.profile,
-  );
-  return response.data;
+  const response = await api.get<ProfileResponse>(ApiEndpoint.auth.profile);
+  return response.data.data.user;
 };
 
 export const logoutApi = async () => {

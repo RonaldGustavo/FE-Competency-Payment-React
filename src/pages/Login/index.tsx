@@ -16,7 +16,6 @@ import Colors from '../../constant/color';
 import { useAppDispatch } from '../../config/hook';
 import { login } from '../../features/auth/AuthSlice';
 import { getProfileApi, loginApi } from '../../features/auth/AuthService';
-import { normalizeAuthResponse, normalizeAuthUser } from '../../utils/authResponse';
 import { saveAuthToken } from '../../utils/authToken';
 import { getApiErrorMessage } from '../../utils/apiError';
 import { isValidEmail } from '../../utils/validation';
@@ -71,21 +70,18 @@ export default function Login(): React.JSX.Element {
     setErrors({});
 
     try {
-      const authResponse = await loginApi({
+      const token = await loginApi({
         email: form.email.trim(),
         password: form.password,
       });
-      const normalizedAuth = normalizeAuthResponse(authResponse);
 
-      if (!normalizedAuth.token) {
+      if (!token) {
         throw new Error('Token login tidak ditemukan dari response API.');
       }
 
-      saveAuthToken(normalizedAuth.token);
+      saveAuthToken(token);
 
-      const profileResponse = await getProfileApi();
-      const profile =
-        normalizeAuthUser(profileResponse) ?? normalizedAuth.user;
+      const profile = await getProfileApi();
 
       if (!profile) {
         throw new Error('Data profile tidak ditemukan.');

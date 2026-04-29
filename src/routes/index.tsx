@@ -6,7 +6,6 @@ import PrivateRoutes from './PrivateRoutes';
 import { getProfileApi } from '../features/auth/AuthService';
 import { logout, setUser } from '../features/auth/AuthSlice';
 import { clearAuthSession, getAuthToken } from '../utils/authToken';
-import { normalizeAuthUser } from '../utils/authResponse';
 
 export default function Routes(): React.JSX.Element {
   const isAuthenticated = useAppSelector((state) => state.auth.isAuthenticated);
@@ -19,8 +18,7 @@ export default function Routes(): React.JSX.Element {
     if (!isAuthenticated || !token || user.name || user.email) return;
 
     getProfileApi()
-      .then((profileResponse) => {
-        const profile = normalizeAuthUser(profileResponse);
+      .then((profile) => {
         if (profile) {
           dispatch(setUser(profile));
         }

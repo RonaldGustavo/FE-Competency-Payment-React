@@ -4,7 +4,6 @@ import Colors from '../../constant/color';
 
 interface WelcomeCardProps {
   userName: string;
-  userRole: string;
 }
 
 const WelcomeCard: React.FC<WelcomeCardProps> = ({ userName }) => {
