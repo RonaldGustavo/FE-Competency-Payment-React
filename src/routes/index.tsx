@@ -11,21 +11,30 @@ export default function Routes(): React.JSX.Element {
   const isAuthenticated = useAppSelector((state) => state.auth.isAuthenticated);
   const user = useAppSelector((state) => state.auth.user);
   const dispatch = useAppDispatch();
+  const isFetchingProfile = React.useRef(false);
 
   React.useEffect(() => {
     const token = getAuthToken();
 
-    if (!isAuthenticated || !token || user.name || user.email) return;
+    if (!isAuthenticated || !token) {
+      isFetchingProfile.current = false;
+      return;
+    }
+
+    if (user.name || user.email || isFetchingProfile.current) return;
+
+    isFetchingProfile.current = true;
 
     getProfileApi()
       .then((profile) => {
-        if (profile) {
-          dispatch(setUser(profile));
-        }
+        dispatch(setUser(profile));
       })
       .catch(() => {
         clearAuthSession();
         dispatch(logout());
+      })
+      .finally(() => {
+        isFetchingProfile.current = false;
       });
   }, [dispatch, isAuthenticated, user.email, user.name]);
 
