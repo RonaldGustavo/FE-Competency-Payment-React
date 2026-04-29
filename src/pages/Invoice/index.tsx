@@ -3,7 +3,7 @@ import { Box, Button, Flex, Input, Text, VStack, chakra } from '@chakra-ui/react
 import Swal from 'sweetalert2';
 import Table from '../../components/Table/Table';
 import Colors from '../../constant/color';
-import type { Column } from '../../interface';
+import type { Column } from '../../interface/global';
 import dataInvoice from '../../mock/dataInvoice.json';
 import { statusColors } from '../../constant/status';
 import PageHeader from '../../components/PageHeader/PageHeader';

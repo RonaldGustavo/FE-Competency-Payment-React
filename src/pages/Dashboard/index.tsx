@@ -8,7 +8,7 @@ import {
 import StatsCard from '../../components/StatsCard/StatsCard';
 import WelcomeCard from '../../components/WelcomeCard/WelcomeCard';
 import Colors from '../../constant/color';
-import type { Column } from '../../interface';
+import type { Column } from '../../interface/global';
 import Table from '../../components/Table/Table';
 import dataTransaction from '../../mock/dataTransaction.json'
 

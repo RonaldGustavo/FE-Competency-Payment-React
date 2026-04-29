@@ -1,4 +1,4 @@
-import { Route, Routes, useLocation, useNavigate } from 'react-router-dom'
+import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import React, { useEffect } from 'react'
 import { useAppSelector } from '../config/hook'
 import { Login, Payment, PaymentDetail, SignUp } from '../pages'
@@ -31,6 +31,7 @@ export default function PublicRoutes (): React.JSX.Element {
       <Route path="/sign-up" element={<SignUp />} />
       <Route path="/payment" element={<Payment />} />
       <Route path="/payment/:invoiceNumber" element={<PaymentDetail />} />
+      <Route path="*" element={<Navigate to="/sign-in" replace />} />
     </Routes>
   )
 }

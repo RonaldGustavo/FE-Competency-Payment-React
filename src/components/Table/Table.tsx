@@ -11,7 +11,7 @@ import {
 } from '@chakra-ui/react';
 import { FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 import Colors from '../../constant/color';
-import type { Column } from '../../interface';
+import type { Column } from '../../interface/global';
 import { Tooltip } from '../Tooltip/Tooltip';
 
 interface TableAction {

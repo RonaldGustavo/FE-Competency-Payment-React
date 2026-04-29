@@ -16,10 +16,11 @@ import { FaBars, FaUserCircle, FaTimes } from 'react-icons/fa';
 import Footer from '../Footer/Footer';
 import { useAppDispatch } from '../../config/hook';
 import { logout } from '../../features/auth/AuthSlice';
-import { getCookie } from '../../utils/cookieHelper';
 import useDeviceType from '../../utils/useDeviceType';
 import Colors from '../../constant/color';
 import { Menu } from '../../constant/menu';
+import { logoutApi } from '../../features/auth/AuthService';
+import { clearAuthSession, getAuthToken } from '../../utils/authToken';
 
 interface PageBaseProps {
   userName: string;
@@ -34,6 +35,7 @@ function PageBase({ userName, userRole }: PageBaseProps): React.JSX.Element {
   const topRef = useRef<HTMLDivElement>(null);
 
   const [isSidebarOpen, setSidebarOpen] = useState<boolean>(true);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const isActive = (path: string) => pathname === path;
 
@@ -43,9 +45,22 @@ function PageBase({ userName, userRole }: PageBaseProps): React.JSX.Element {
     .map((v) => v.charAt(0).toUpperCase() + v.slice(1))
     .join(' / ');
 
-  const handleSignOut = () => {
+  const finishLogout = () => {
+    clearAuthSession();
     dispatch(logout());
-    navigate('/sign-in');
+    navigate('/sign-in', { replace: true });
+  };
+
+  const handleSignOut = async () => {
+    if (isLoggingOut) return;
+
+    setIsLoggingOut(true);
+
+    try {
+      await logoutApi();
+    } finally {
+      finishLogout();
+    }
   };
 
   const handleToggleSidebar = () => {
@@ -66,10 +81,9 @@ function PageBase({ userName, userRole }: PageBaseProps): React.JSX.Element {
 
   useEffect(() => {
     const interval = setInterval(() => {
-      const token = getCookie('auth-user');
+      const token = getAuthToken();
       if (!token) {
-        dispatch(logout());
-        navigate('/sign-in');
+        finishLogout();
       }
     }, 5000);
 
@@ -336,10 +350,14 @@ function PageBase({ userName, userRole }: PageBaseProps): React.JSX.Element {
                   borderRadius="8px"
                   boxShadow={Colors.cardShadowHover}
                 >
-                  <MenuItem value="logout" onClick={handleSignOut}>
+                  <MenuItem
+                    value="logout"
+                    onClick={handleSignOut}
+                    disabled={isLoggingOut}
+                  >
                     <Flex align="center" gap={2} color={Colors.textPrimary}>
                       <RiLoginBoxLine />
-                      <Text>Logout</Text>
+                      <Text>{isLoggingOut ? 'Logging out...' : 'Logout'}</Text>
                     </Flex>
                   </MenuItem>
                 </MenuContent>
