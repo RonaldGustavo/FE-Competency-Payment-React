@@ -1,5 +1,6 @@
 import React, { useState, type FormEvent } from 'react';
 import { Box, Button, Flex, Input, Text, VStack, chakra } from '@chakra-ui/react';
+import { useLocalTable } from '../../hooks/useLocalTable';
 import Swal from 'sweetalert2';
 import Table from '../../components/Table/Table';
 import Colors from '../../constant/color';
@@ -51,6 +52,8 @@ const Invoice = (): React.JSX.Element => {
   const [invoiceRows, setInvoiceRows] = useState<InvoiceRow[]>(
     dataInvoice as InvoiceRow[],
   );
+  const { paginatedData, pagination, onSearch, onPageChange, onPerPageChange } =
+    useLocalTable(invoiceRows);
   const [selectedInvoice, setSelectedInvoice] = useState<InvoiceRow | null>(
     null,
   );
@@ -255,8 +258,12 @@ const Invoice = (): React.JSX.Element => {
         boxShadow={Colors.cardShadow}
       >
         <Table
-          data={invoiceRows}
+          data={paginatedData}
           columns={columns}
+          pagination={pagination}
+          onSearch={onSearch}
+          onPageChange={onPageChange}
+          onPerPageChange={onPerPageChange}
           actions={[
             {
               icon: <FaEye />,

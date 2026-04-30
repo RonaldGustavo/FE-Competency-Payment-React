@@ -6,7 +6,9 @@ const ApiEndpoint = {
     logout: '/auth/logout',
   },
   wallet: {
-    balance: '/wallet/balance'
+    balance: '/wallet/balance',
+    topUps: '/wallet/top-ups',
+    reviewTopUp: (id: string) => `/wallet/top-ups/${id}/review`,
   }
 };
 

@@ -1,5 +1,6 @@
 import React, { useState, type FormEvent } from 'react';
 import { Box, Button, Flex, Grid, Input, Text, VStack } from '@chakra-ui/react';
+import { useLocalTable } from '../../hooks/useLocalTable';
 import Swal from 'sweetalert2';
 import Table from '../../components/Table/Table';
 import Colors from '../../constant/color';
@@ -58,6 +59,8 @@ const Refund = (): React.JSX.Element => {
   const [refundRows, setRefundRows] = useState<RefundRow[]>(
     dataRefund as RefundRow[],
   );
+  const { paginatedData, pagination, onSearch, onPageChange, onPerPageChange } =
+    useLocalTable(refundRows);
   const [selectedRefund, setSelectedRefund] = useState<RefundRow | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [refundForm, setRefundForm] = useState<RefundForm>(initialRefundForm);
@@ -267,8 +270,12 @@ const Refund = (): React.JSX.Element => {
         boxShadow={Colors.cardShadow}
       >
         <Table
-          data={refundRows}
+          data={paginatedData}
           columns={columns}
+          pagination={pagination}
+          onSearch={onSearch}
+          onPageChange={onPageChange}
+          onPerPageChange={onPerPageChange}
           actions={
             isAdmin
               ? [

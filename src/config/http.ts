@@ -1,8 +1,12 @@
 import axios from 'axios';
-import { getAuthToken } from '../utils/authToken';
+import { store } from './store';
+import { logout } from '../features/auth/AuthSlice';
+import { clearAuthSession, getAuthToken } from '../utils/authToken';
+import { isApiUnauthorizedError } from '../utils/apiError';
 
 const API_BASE_URL = import.meta.env.VITE_APP_BASE_URL;
 const API_TIMEOUT = 15000;
+let isHandlingUnauthorized = false;
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
@@ -21,3 +25,20 @@ api.interceptors.request.use((config) => {
 
   return config;
 });
+
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const hasAuthSession =
+      Boolean(getAuthToken()) || store.getState().auth.isAuthenticated;
+
+    if (isApiUnauthorizedError(error) && hasAuthSession && !isHandlingUnauthorized) {
+      isHandlingUnauthorized = true;
+      clearAuthSession();
+      store.dispatch(logout());
+      isHandlingUnauthorized = false;
+    }
+
+    return Promise.reject(error);
+  },
+);

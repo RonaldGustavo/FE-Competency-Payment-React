@@ -1,76 +1,103 @@
-import React, { useState, type FormEvent } from 'react';
-import { Box, Button, Flex, Grid, Input, Text, VStack } from '@chakra-ui/react';
+import React, { useState, useCallback, useEffect, type FormEvent } from 'react';
+import {
+  Box,
+  Button,
+  Flex,
+  Grid,
+  Input,
+  Text,
+  Textarea,
+  VStack,
+} from '@chakra-ui/react';
+import moment from 'moment';
 import Swal from 'sweetalert2';
 import Table from '../../components/Table/Table';
 import Colors from '../../constant/color';
 import type { Column } from '../../interface/global';
-import dataWallet from '../../mock/dataWallet.json';
 import { statusColors } from '../../constant/status';
 import PageHeader from '../../components/PageHeader/PageHeader';
 import { FaCheck, FaEdit, FaPlus, FaTimes } from 'react-icons/fa';
 import AppModal from '../../components/AppModal/AppModal';
-import {
-  formatRupiah,
-  getTodayDate,
-  isFutureOrToday,
-  isValidEmail,
-} from '../../utils/validation';
+import { formatRupiah } from '../../utils/validation';
 import { useAppSelector } from '../../config/hook';
+import type { Pagination, TopUp } from '../../interface/wallet';
+import {
+  createTopUpApi,
+  getTopUpsApi,
+  reviewTopUpApi,
+} from '../../features/wallet/WalletService';
+import { getApiErrorMessage } from '../../utils/apiError';
 
-interface WalletRow {
-  merchant_name: string;
-  type: string;
-  amount: number;
-  status: string;
-  processed_at: string | null;
-  email?: string;
-  request_date?: string;
-}
-
-interface WalletForm {
-  merchant_name: string;
-  email: string;
-  amount: string;
-  request_date: string;
-}
-
-type WalletFormErrors = Partial<Record<keyof WalletForm, string>>;
-
-const initialWalletForm: WalletForm = {
-  merchant_name: '',
-  email: '',
-  amount: '',
-  request_date: getTodayDate(),
-};
+const formatDate = (value: string | null | undefined) =>
+  value ? moment(value).format('DD MMMM YYYY HH:mm:ss') : '-';
 
 const Wallet = (): React.JSX.Element => {
   const user = useAppSelector((state) => state.auth.user);
   const isAdmin = user?.role === 'Admin';
 
-  const [walletRows, setWalletRows] = useState<WalletRow[]>(
-    dataWallet as WalletRow[],
-  );
-  const [selectedWallet, setSelectedWallet] = useState<any>(null);
+  const [topUps, setTopUps] = useState<TopUp[]>([]);
+  const [isLoadingList, setIsLoadingList] = useState(false);
+  const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState(10);
+  const [search, setSearch] = useState('');
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [paginationMeta, setPaginationMeta] = useState<Pick<Pagination, 'total' | 'total_pages'>>({
+    total: 0,
+    total_pages: 1,
+  });
+
+  const [selectedTopUp, setSelectedTopUp] = useState<TopUp | null>(null);
+  const [reviewNote, setReviewNote] = useState('');
+  const [pendingAction, setPendingAction] = useState<'approve' | 'reject' | null>(null);
 
   const [isTopUpModalOpen, setIsTopUpModalOpen] = useState(false);
-  const [walletForm, setWalletForm] = useState<WalletForm>(initialWalletForm);
-  const [formErrors, setFormErrors] = useState<WalletFormErrors>({});
+  const [amount, setAmount] = useState('');
+  const [amountError, setAmountError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const closeTopUpModal = () => {
-    setIsTopUpModalOpen(false);
-    setWalletForm(initialWalletForm);
-    setFormErrors({});
-  };
+  useEffect(() => {
+    const controller = new AbortController();
+    let cancelled = false;
+
+    setIsLoadingList(true);
+    getTopUpsApi({ page, per_page: perPage, search }, controller.signal)
+      .then((result) => {
+        if (cancelled) return;
+        setTopUps(result.top_ups);
+        setPaginationMeta({
+          total: result.pagination.total,
+          total_pages: result.pagination.total_pages,
+        });
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        if ((error as any)?.code === 'ERR_CANCELED') return;
+        Swal.fire({ icon: 'error', title: 'Gagal memuat data', text: getApiErrorMessage(error) });
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoadingList(false);
+      });
+
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [page, perPage, search, refreshKey]);
+
+  const handleSearch = useCallback((s: string) => {
+    setPage(1);
+    setSearch(s);
+  }, []);
+
+  const handlePageChange = useCallback((p: number) => setPage(p), []);
+
+  const handlePerPageChange = useCallback((pp: number) => {
+    setPage(1);
+    setPerPage(pp);
+  }, []);
 
   const columns: Column[] = [
-    {
-      key: 'merchant_name',
-      header: 'Merchant',
-    },
-    {
-      key: 'type',
-      header: 'Type',
-    },
+    { key: 'user_name', header: 'Merchant' },
     {
       key: 'amount',
       header: 'Amount',
@@ -82,7 +109,6 @@ const Wallet = (): React.JSX.Element => {
       render: (value) => {
         const status = value as keyof typeof statusColors;
         const color = statusColors[status] ?? Colors.textSecondary;
-
         return (
           <Box
             as="span"
@@ -100,119 +126,94 @@ const Wallet = (): React.JSX.Element => {
       },
     },
     {
-      key: 'processed_at',
-      header: 'Processed At',
-      render: (value) => value || '-',
+      key: 'created_at',
+      header: 'Created At',
+      render: (value) => formatDate(value),
+    },
+    {
+      key: 'updated_at',
+      header: 'Updated At',
+      render: (value) => formatDate(value),
     },
   ];
 
-  const validateWalletForm = () => {
-    const errors: WalletFormErrors = {};
-    const amount = Number(walletForm.amount);
+  const closeTopUpModal = () => {
+    setIsTopUpModalOpen(false);
+    setAmount('');
+    setAmountError('');
+  };
 
-    if (!walletForm.merchant_name.trim()) {
-      errors.merchant_name = 'Merchant wajib diisi.';
+  const validateAmount = () => {
+    const parsed = Number(amount);
+    if (!amount.trim()) {
+      setAmountError('Amount wajib diisi.');
+      return false;
     }
-
-    if (!walletForm.email.trim()) {
-      errors.email = 'Email wajib diisi.';
-    } else if (!isValidEmail(walletForm.email)) {
-      errors.email = 'Format email tidak valid.';
+    if (Number.isNaN(parsed) || parsed <= 0) {
+      setAmountError('Amount harus lebih dari 0.');
+      return false;
     }
-
-    if (!walletForm.amount.trim()) {
-      errors.amount = 'Amount wajib diisi.';
-    } else if (Number.isNaN(amount) || amount <= 0) {
-      errors.amount = 'Amount harus lebih dari 0.';
-    }
-
-    if (!walletForm.request_date) {
-      errors.request_date = 'Tanggal top up wajib diisi.';
-    } else if (!isFutureOrToday(walletForm.request_date)) {
-      errors.request_date = 'Tanggal top up minimal hari ini.';
-    }
-
-    setFormErrors(errors);
-    return Object.keys(errors).length === 0;
+    setAmountError('');
+    return true;
   };
 
   const handleTopUpWallet = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (!validateAmount()) return;
 
-    if (!validateWalletForm()) {
-      await Swal.fire({
-        icon: 'error',
-        title: 'Form belum valid',
-        text: 'Periksa kembali error pada form top up wallet.',
+    setIsSubmitting(true);
+    try {
+      await createTopUpApi({ amount: Number(amount) });
+      closeTopUpModal();
+      setRefreshKey((k) => k + 1);
+      Swal.fire({
+        icon: 'success',
+        title: 'Top up berhasil diajukan',
+        text: 'Permintaan top up sedang menunggu proses.',
+        confirmButtonColor: Colors.primary,
       });
-      return;
+    } catch (error) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Gagal mengajukan top up',
+        text: getApiErrorMessage(error),
+      });
+    } finally {
+      setIsSubmitting(false);
     }
-
-    const result = await Swal.fire({
-      icon: 'question',
-      title: 'Ajukan top up wallet?',
-      text: 'Top up akan masuk dengan status PENDING.',
-      showCancelButton: true,
-      confirmButtonText: 'Ya, ajukan',
-      cancelButtonText: 'Batal',
-      confirmButtonColor: Colors.primary,
-    });
-
-    if (!result.isConfirmed) return;
-
-    const newTopUp: WalletRow = {
-      merchant_name: walletForm.merchant_name.trim(),
-      email: walletForm.email.trim(),
-      type: 'TOP_UP',
-      amount: Number(walletForm.amount),
-      status: 'PENDING',
-      processed_at: null,
-      request_date: walletForm.request_date,
-    };
-
-    setWalletRows((currentRows) => [newTopUp, ...currentRows]);
-    setWalletForm(initialWalletForm);
-    setFormErrors({});
-    setIsTopUpModalOpen(false);
-
-    await Swal.fire({
-      icon: 'success',
-      title: 'Top up wallet dibuat',
-      text: `${newTopUp.merchant_name} menunggu proses top up.`,
-      confirmButtonColor: Colors.primary,
-    });
   };
 
-  const handleRefundApproval = async (
-    wallet: any,
-    status: 'Approved' | 'Rejected',
-  ) => {
-    const isApprove = status === 'Approved';
-    const result = await Swal.fire({
-      icon: 'warning',
-      title: `${isApprove ? 'Approve' : 'Reject'} refund?`,
-      text: `${wallet.id} akan diubah menjadi ${status}.`,
-      showCancelButton: true,
-      confirmButtonText: isApprove ? 'Ya, approve' : 'Ya, reject',
-      cancelButtonText: 'Batal',
-      confirmButtonColor: isApprove ? Colors.success : Colors.danger,
-    });
+  const closeApprovalModal = () => {
+    setSelectedTopUp(null);
+    setReviewNote('');
+    setPendingAction(null);
+  };
 
-    if (!result.isConfirmed) return;
+  const handleConfirmReview = async () => {
+    if (!selectedTopUp || !pendingAction) return;
 
-    setWalletRows((currentRows) =>
-      currentRows.map((row: any) =>
-        row.id === wallet.id ? { ...row, status } : row,
-      ),
-    );
-    setSelectedWallet(null);
+    const topUpId = selectedTopUp.id;
+    const action = pendingAction;
+    const note = reviewNote;
 
-    await Swal.fire({
-      icon: 'success',
-      title: 'Status refund diperbarui',
-      text: `${wallet.id} sekarang ${status}.`,
-      confirmButtonColor: Colors.primary,
-    });
+    closeApprovalModal();
+
+    try {
+      await reviewTopUpApi(topUpId, { action, note });
+      setRefreshKey((k) => k + 1);
+      Swal.fire({
+        icon: 'success',
+        title: 'Status diperbarui',
+        text: `Top up berhasil di-${action}.`,
+        confirmButtonColor: Colors.primary,
+      });
+    } catch (error) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Gagal memperbarui status',
+        text: getApiErrorMessage(error),
+      });
+    }
   };
 
   return (
@@ -222,12 +223,13 @@ const Wallet = (): React.JSX.Element => {
         subtitle="Top Up and History Wallet Saldo"
       />
 
-      <Flex justifyContent="end">
+      <Flex justify="space-between" align="center" wrap="wrap" gap={3}>
         <Button
           size="sm"
           bg={'#2e8c73'}
           minW={['100%', 125]}
           borderRadius={'5px'}
+          ml={isAdmin ? 'auto' : undefined}
           onClick={() => setIsTopUpModalOpen(true)}
         >
           <FaPlus />
@@ -243,16 +245,31 @@ const Wallet = (): React.JSX.Element => {
         boxShadow={Colors.cardShadow}
       >
         <Table
-          data={walletRows}
+          data={topUps}
           columns={columns}
+          isLoading={isLoadingList}
+          pagination={{
+            total: paginationMeta.total,
+            page,
+            perPage,
+            totalPages: paginationMeta.total_pages,
+          }}
+          onPageChange={handlePageChange}
+          onPerPageChange={handlePerPageChange}
+          onSearch={handleSearch}
           actions={
             isAdmin
               ? [
                   {
                     icon: <FaEdit />,
                     label: 'Approval',
-                    onClick: (row) => setSelectedWallet(row as any),
+                    onClick: (row) => {
+                      setSelectedTopUp(row as TopUp);
+                      setReviewNote('');
+                      setPendingAction(null);
+                    },
                     bg: '#de943a',
+                    isVisible: (row) => row.status === 'PENDING',
                   },
                 ]
               : undefined
@@ -260,6 +277,7 @@ const Wallet = (): React.JSX.Element => {
         />
       </Box>
 
+      {/* //NOTE - Top up Modal */}
       <AppModal
         isOpen={isTopUpModalOpen}
         title="Top Up Wallet"
@@ -267,11 +285,7 @@ const Wallet = (): React.JSX.Element => {
         onClose={closeTopUpModal}
         footer={
           <>
-            <Button
-              variant="outline"
-              borderRadius="xl"
-              onClick={closeTopUpModal}
-            >
+            <Button variant="outline" borderRadius="xl" onClick={closeTopUpModal}>
               Batal
             </Button>
             <Button
@@ -281,8 +295,9 @@ const Wallet = (): React.JSX.Element => {
               bg={Colors.primary}
               color="white"
               _hover={{ bg: Colors.primaryDark }}
+              disabled={isSubmitting}
             >
-              Ajukan Top Up
+              {isSubmitting ? 'Mengajukan...' : 'Ajukan Top Up'}
             </Button>
           </>
         }
@@ -291,92 +306,19 @@ const Wallet = (): React.JSX.Element => {
           <VStack gap="4" align="stretch">
             <Box>
               <Text fontSize="sm" mb="2" fontWeight="medium">
-                Merchant
-              </Text>
-              <Input
-                value={walletForm.merchant_name}
-                placeholder="Toko Sukses Jaya"
-                borderRadius="xl"
-                onChange={(event) =>
-                  setWalletForm((current) => ({
-                    ...current,
-                    merchant_name: event.target.value,
-                  }))
-                }
-              />
-              {formErrors.merchant_name && (
-                <Text mt="2" fontSize="sm" color={Colors.danger}>
-                  {formErrors.merchant_name}
-                </Text>
-              )}
-            </Box>
-
-            <Box>
-              <Text fontSize="sm" mb="2" fontWeight="medium">
-                Email Merchant
-              </Text>
-              <Input
-                type="email"
-                value={walletForm.email}
-                placeholder="merchant@email.com"
-                borderRadius="xl"
-                onChange={(event) =>
-                  setWalletForm((current) => ({
-                    ...current,
-                    email: event.target.value,
-                  }))
-                }
-              />
-              {formErrors.email && (
-                <Text mt="2" fontSize="sm" color={Colors.danger}>
-                  {formErrors.email}
-                </Text>
-              )}
-            </Box>
-
-            <Box>
-              <Text fontSize="sm" mb="2" fontWeight="medium">
                 Amount
               </Text>
               <Input
                 type="number"
                 min="1"
-                value={walletForm.amount}
+                value={amount}
                 placeholder="500000"
                 borderRadius="xl"
-                onChange={(event) =>
-                  setWalletForm((current) => ({
-                    ...current,
-                    amount: event.target.value,
-                  }))
-                }
+                onChange={(event) => setAmount(event.target.value)}
               />
-              {formErrors.amount && (
+              {amountError && (
                 <Text mt="2" fontSize="sm" color={Colors.danger}>
-                  {formErrors.amount}
-                </Text>
-              )}
-            </Box>
-
-            <Box>
-              <Text fontSize="sm" mb="2" fontWeight="medium">
-                Tanggal Top Up
-              </Text>
-              <Input
-                type="date"
-                min={getTodayDate()}
-                value={walletForm.request_date}
-                borderRadius="xl"
-                onChange={(event) =>
-                  setWalletForm((current) => ({
-                    ...current,
-                    request_date: event.target.value,
-                  }))
-                }
-              />
-              {formErrors.request_date && (
-                <Text mt="2" fontSize="sm" color={Colors.danger}>
-                  {formErrors.request_date}
+                  {amountError}
                 </Text>
               )}
             </Box>
@@ -384,77 +326,149 @@ const Wallet = (): React.JSX.Element => {
         </form>
       </AppModal>
 
+      {/* //NOTE - Approve Modal */}
       <AppModal
-        isOpen={Boolean(selectedWallet)}
-        title="Approval Refund"
-        subtitle="Review request refund sebelum approve atau reject."
-        onClose={() => setSelectedWallet(null)}
+        isOpen={Boolean(selectedTopUp)}
+        title={
+          pendingAction
+            ? `Konfirmasi ${pendingAction === 'approve' ? 'Approve' : 'Reject'}`
+            : 'Approval Top Up'
+        }
+        subtitle={
+          pendingAction
+            ? 'Tindakan ini tidak dapat dibatalkan setelah dikonfirmasi.'
+            : 'Review request top up sebelum approve atau reject.'
+        }
+        onClose={closeApprovalModal}
         maxW="720px"
         footer={
-          <>
-            <Button
-              variant="outline"
-              borderRadius="xl"
-              onClick={() => setSelectedWallet(null)}
-            >
-              Tutup
-            </Button>
-            {selectedWallet && (
-              <>
-                <Button
-                  borderRadius="xl"
-                  bg={Colors.danger}
-                  color="white"
-                  _hover={{ bg: '#B91C1C' }}
-                  onClick={() =>
-                    handleRefundApproval(selectedWallet, 'Rejected')
-                  }
-                >
-                  <FaTimes />
-                  Reject
-                </Button>
-                <Button
-                  borderRadius="xl"
-                  bg={Colors.success}
-                  color="white"
-                  _hover={{ bg: '#047857' }}
-                  onClick={() =>
-                    handleRefundApproval(selectedWallet, 'Approved')
-                  }
-                >
-                  <FaCheck />
-                  Approve
-                </Button>
-              </>
-            )}
-          </>
+          pendingAction ? (
+            <>
+              <Button
+                variant="outline"
+                borderRadius="xl"
+                onClick={() => setPendingAction(null)}
+              >
+                Kembali
+              </Button>
+              <Button
+                borderRadius="xl"
+                bg={pendingAction === 'approve' ? Colors.success : Colors.danger}
+                color="white"
+                _hover={{ bg: pendingAction === 'approve' ? '#047857' : '#B91C1C' }}
+                onClick={handleConfirmReview}
+              >
+                {pendingAction === 'approve' ? (
+                  <><FaCheck /> Ya, Approve</>
+                ) : (
+                  <><FaTimes /> Ya, Reject</>
+                )}
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button variant="outline" borderRadius="xl" onClick={closeApprovalModal}>
+                Tutup
+              </Button>
+              {selectedTopUp && (
+                <>
+                  <Button
+                    borderRadius="xl"
+                    bg={Colors.danger}
+                    color="white"
+                    _hover={{ bg: '#B91C1C' }}
+                    onClick={() => setPendingAction('reject')}
+                  >
+                    <FaTimes />
+                    Reject
+                  </Button>
+                  <Button
+                    borderRadius="xl"
+                    bg={Colors.success}
+                    color="white"
+                    _hover={{ bg: '#047857' }}
+                    onClick={() => setPendingAction('approve')}
+                  >
+                    <FaCheck />
+                    Approve
+                  </Button>
+                </>
+              )}
+            </>
+          )
         }
       >
-        {selectedWallet && (
-          <Grid templateColumns={{ base: '1fr', md: 'repeat(2, 1fr)' }} gap="4">
-            {[
-              ['Merchant', selectedWallet.merchant_name],
-              ['Type', selectedWallet.type],
-              ['Amount', selectedWallet.amount],
-              ['Status', selectedWallet.status],
-              ['Processed At', selectedWallet.processed_at],
-            ].map(([label, value]) => (
-              <Box
-                key={label}
-                border={`1px solid ${Colors.borderPrimary}`}
-                borderRadius="16px"
-                p="4"
-                bg={Colors.bgPrimary}
+        {selectedTopUp && !pendingAction && (
+          <VStack gap="4" align="stretch">
+            <Grid templateColumns={{ base: '1fr', md: 'repeat(2, 1fr)' }} gap="4">
+              {(
+                [
+                  ['Merchant', selectedTopUp.user_name ?? '-'],
+                  ['Amount', formatRupiah(selectedTopUp.amount)],
+                  ['Status', selectedTopUp.status],
+                  ['Created At', formatDate(selectedTopUp.created_at)],
+                  ['Updated At', formatDate(selectedTopUp.updated_at)],
+                ] as [string, string][]
+              ).map(([label, value]) => (
+                <Box
+                  key={label}
+                  border={`1px solid ${Colors.borderPrimary}`}
+                  borderRadius="16px"
+                  p="4"
+                  bg={Colors.bgPrimary}
+                >
+                  <Text fontSize="xs" color={Colors.textSecondary}>
+                    {label}
+                  </Text>
+                  <Text mt="1" fontWeight="700" color={Colors.textPrimary}>
+                    {value}
+                  </Text>
+                </Box>
+              ))}
+            </Grid>
+            <Box>
+              <Text fontSize="sm" mb="2" fontWeight="medium">
+                Catatan Review
+              </Text>
+              <Textarea
+                value={reviewNote}
+                placeholder="Tulis catatan untuk approval..."
+                borderRadius="xl"
+                onChange={(event) => setReviewNote(event.target.value)}
+              />
+            </Box>
+          </VStack>
+        )}
+
+        {selectedTopUp && pendingAction && (
+          <Box
+            bg={pendingAction === 'approve' ? '#F0FDF4' : '#FEF2F2'}
+            border={`1px solid ${pendingAction === 'approve' ? '#BBF7D0' : '#FECACA'}`}
+            borderRadius="16px"
+            p={5}
+            textAlign="center"
+          >
+            <Text fontWeight="600" color={Colors.textPrimary}>
+              Top up{selectedTopUp.user_name ? ` dari ${selectedTopUp.user_name}` : ''} sebesar{' '}
+              <Text as="span" fontWeight="700">
+                {formatRupiah(selectedTopUp.amount)}
+              </Text>{' '}
+              akan di-
+              <Text
+                as="span"
+                fontWeight="700"
+                color={pendingAction === 'approve' ? Colors.success : Colors.danger}
               >
-                <Text fontSize="xs" color={Colors.textSecondary}>
-                  {label}
-                </Text>
-                <Text mt="1" fontWeight="700" color={Colors.textPrimary}>
-                  {value}
-                </Text>
-              </Box>
-            ))}
-          </Grid>
+                {pendingAction === 'approve' ? 'APPROVE' : 'REJECT'}
+              </Text>
+              .
+            </Text>
+            {reviewNote && (
+              <Text mt={3} fontSize="sm" color={Colors.textSecondary}>
+                Catatan: {reviewNote}
+              </Text>
+            )}
+          </Box>
         )}
       </AppModal>
     </VStack>

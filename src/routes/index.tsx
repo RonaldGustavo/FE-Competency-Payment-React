@@ -4,9 +4,9 @@ import { useAppDispatch, useAppSelector } from '../config/hook';
 import PublicRoutes from './PublicRoutes';
 import PrivateRoutes from './PrivateRoutes';
 import { getProfileApi } from '../features/auth/AuthService';
-import { logout, setUser } from '../features/auth/AuthSlice';
+import { setUser } from '../features/auth/AuthSlice';
 import { setWalletBalance } from '../features/wallet/WalletSlice';
-import { clearAuthSession, getAuthToken } from '../utils/authToken';
+import { getAuthToken } from '../utils/authToken';
 import { getWalletBalanceApi } from '../features/wallet/WalletService';
 
 export default function Routes(): React.JSX.Element {
@@ -30,24 +30,19 @@ export default function Routes(): React.JSX.Element {
     getProfileApi()
       .then((profile) => {
         dispatch(setUser(profile));
-        getWalletBalanceApi()
+        if(profile?.role === 'Merchant'){
+          getWalletBalanceApi()
           .then((res) => {
             dispatch(setWalletBalance(res.balance));
           })
-          .catch(() => {
-            //TODO - unauth change to global
-            clearAuthSession();
-            dispatch(logout());
-          });
+          .catch(() => undefined);
+        }
       })
-      .catch(() => {
-        clearAuthSession();
-        dispatch(logout());
-      })
+      .catch(() => undefined)
       .finally(() => {
         isFetchingProfile.current = false;
       });
-  }, [dispatch, isAuthenticated, user.email, user.name]);
+  }, [dispatch, isAuthenticated]);
 
   return (
     <BrowserRouter>

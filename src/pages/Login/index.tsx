@@ -15,7 +15,7 @@ import { useNavigate } from 'react-router-dom';
 import Colors from '../../constant/color';
 import { useAppDispatch } from '../../config/hook';
 import { login } from '../../features/auth/AuthSlice';
-import { getProfileApi, loginApi } from '../../features/auth/AuthService';
+import { loginApi } from '../../features/auth/AuthService';
 import { saveAuthToken } from '../../utils/authToken';
 import { getApiErrorMessage } from '../../utils/apiError';
 import { isValidEmail } from '../../utils/validation';
@@ -81,13 +81,7 @@ export default function Login(): React.JSX.Element {
 
       saveAuthToken(token);
 
-      const profile = await getProfileApi();
-
-      if (!profile) {
-        throw new Error('Data profile tidak ditemukan.');
-      }
-
-      dispatch(login(profile));
+      dispatch(login());
     } catch (error) {
       setErrors({
         general: getApiErrorMessage(error),
