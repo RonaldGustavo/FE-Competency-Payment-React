@@ -12,4 +12,7 @@ export const statusColors: Record<string, string> = {
   SUCCESS: Colors.success,
   APPROVED: Colors.success,
   REJECTED: Colors.danger,
+  Paid: Colors.success,
+  Failed: Colors.danger,
+  Expired: Colors.danger,
 };

@@ -17,20 +17,20 @@ import Colors from '../../constant/color';
 
 export default function Payment(): React.JSX.Element {
   const navigate = useNavigate();
-  const [invoiceNumber, setInvoiceNumber] = useState('');
+  const [paymentToken, setPaymentToken] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    const invoice = invoiceNumber.trim().toUpperCase();
+    const token = paymentToken.trim();
 
-    if (!invoice) {
-      setErrorMessage('No invoice wajib diisi.');
+    if (!token) {
+      setErrorMessage('Payment token wajib diisi.');
       return;
     }
 
-    navigate(`/payment/${encodeURIComponent(invoice)}`);
+    navigate(`/payment/${encodeURIComponent(token)}`);
   };
 
   return (
@@ -145,7 +145,7 @@ export default function Payment(): React.JSX.Element {
                     Cari Invoice
                   </Text>
                   <Text fontSize="sm" color={Colors.textSecondary}>
-                    Masukkan nomor invoice yang ingin dibayar.
+                    Masukkan payment token invoice yang ingin dibayar.
                   </Text>
                 </Box>
               </VStack>
@@ -159,7 +159,7 @@ export default function Payment(): React.JSX.Element {
                       color={Colors.textPrimary}
                       fontWeight="medium"
                     >
-                      No Invoice
+                      Payment Token
                     </Text>
                     <Box position="relative">
                       <Icon
@@ -172,15 +172,14 @@ export default function Payment(): React.JSX.Element {
                         boxSize="4"
                       />
                       <Input
-                        value={invoiceNumber}
-                        placeholder="INV-0002"
+                        value={paymentToken}
+                        placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
                         size="lg"
                         borderRadius="xl"
                         borderColor={Colors.borderPrimary}
                         pl="44px"
-                        textTransform="uppercase"
                         onChange={(event) => {
-                          setInvoiceNumber(event.target.value);
+                          setPaymentToken(event.target.value);
                           setErrorMessage('');
                         }}
                         _focus={{

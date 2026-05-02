@@ -5,10 +5,7 @@ import {
   FaWallet,
 } from 'react-icons/fa';
 
-import Dashboard from '../pages/Dashboard';
-import Invoice from '../pages/Invoice';
-import Refund from '../pages/Refund';
-import Wallet from '../pages/Wallet';
+import { Dashboard, Invoice, Refund, Wallet } from '../pages';
 
 export const Menu = [
   {

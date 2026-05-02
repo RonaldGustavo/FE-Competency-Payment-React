@@ -1,97 +1,117 @@
-import React, { useState, type FormEvent } from 'react';
-import { Box, Button, Flex, Input, Text, VStack, chakra } from '@chakra-ui/react';
-import { useLocalTable } from '../../hooks/useLocalTable';
+import React, { useState, useCallback, useEffect, type FormEvent } from 'react';
+import {
+  Box,
+  Button,
+  Flex,
+  Input,
+  Text,
+  VStack,
+  chakra,
+} from '@chakra-ui/react';
+import moment from 'moment';
 import Swal from 'sweetalert2';
 import Table from '../../components/Table/Table';
 import Colors from '../../constant/color';
 import type { Column } from '../../interface/global';
-import dataInvoice from '../../mock/dataInvoice.json';
 import { statusColors } from '../../constant/status';
 import PageHeader from '../../components/PageHeader/PageHeader';
-import { FaEye, FaPlus } from 'react-icons/fa';
-import { useAppSelector } from '../../config/hook';
+import { FaEye, FaPlus, FaTrash } from 'react-icons/fa';
 import AppModal from '../../components/AppModal/AppModal';
+import { formatRupiah, getNowDatetime } from '../../utils/validation';
+import { useAppSelector } from '../../config/hook';
+import type { Invoice } from '../../interface/invoice';
 import {
-  formatRupiah,
-  getTodayDate,
-  isFutureOrToday,
-  isValidEmail,
-} from '../../utils/validation';
-import InvoiceActionModal, { type InvoiceRow } from './InvoiceActionModal';
+  createInvoiceApi,
+  deleteInvoiceApi,
+  getInvoicesApi,
+  reviewInvoiceApi,
+} from '../../features/invoice/InvoiceService';
+import { getApiErrorMessage } from '../../utils/apiError';
+import InvoiceActionModal from './InvoiceActionModal';
+
+const INVOICE_STATUS_OPTIONS = ['', 'Pending', 'Failed', 'Paid', 'Expired'] as const;
+
+const formatDate = (value: string | null | undefined) =>
+  value ? moment(value).format('DD MMMM YYYY HH:mm:ss') : '-';
 
 interface InvoiceForm {
-  name_merchant: string;
-  email: string;
   amount: string;
-  method: string;
+  description: string;
   due_date: string;
 }
 
 type InvoiceFormErrors = Partial<Record<keyof InvoiceForm, string>>;
 
-const initialInvoiceForm: InvoiceForm = {
-  name_merchant: '',
-  email: '',
+const getInitialForm = (): InvoiceForm => ({
   amount: '',
-  method: 'WALLET',
-  due_date: getTodayDate(),
-};
+  description: '',
+  due_date: getNowDatetime(5),
+});
 
-const createInvoiceNumber = (rows: InvoiceRow[]) => {
-  const lastNumber = rows.reduce((max, row) => {
-    const current = Number(row.no_invoice.replace(/\D/g, ''));
-    return Number.isNaN(current) ? max : Math.max(max, current);
-  }, 0);
-
-  return `INV-${String(lastNumber + 1).padStart(4, '0')}`;
-};
-
-const Invoice = (): React.JSX.Element => {
+const InvoicePage = (): React.JSX.Element => {
   const user = useAppSelector((state) => state.auth.user);
   const isAdmin = user?.role === 'Admin';
-  const [invoiceRows, setInvoiceRows] = useState<InvoiceRow[]>(
-    dataInvoice as InvoiceRow[],
-  );
-  const { paginatedData, pagination, onSearch, onPageChange, onPerPageChange } =
-    useLocalTable(invoiceRows);
-  const [selectedInvoice, setSelectedInvoice] = useState<InvoiceRow | null>(
-    null,
-  );
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [invoiceForm, setInvoiceForm] =
-    useState<InvoiceForm>(initialInvoiceForm);
-  const [formErrors, setFormErrors] = useState<InvoiceFormErrors>({});
 
-  const closeCreateModal = () => {
-    setIsCreateModalOpen(false);
-    setInvoiceForm(initialInvoiceForm);
-    setFormErrors({});
-  };
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [isLoadingList, setIsLoadingList] = useState(false);
+  const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState(10);
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [paginationMeta, setPaginationMeta] = useState<Pick<any, 'total' | 'total_pages'>>({
+    total: 0,
+    total_pages: 1,
+  });
+
+  const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+
+  const [form, setForm] = useState<InvoiceForm>(getInitialForm);
+  const [formErrors, setFormErrors] = useState<InvoiceFormErrors>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    let cancelled = false;
+
+    setIsLoadingList(true);
+    getInvoicesApi({ page, per_page: perPage, search, status: statusFilter }, controller.signal)
+      .then((result) => {
+        if (cancelled) return;
+        setInvoices(result.invoices);
+        setPaginationMeta({ total: result.pagination.total, total_pages: result.pagination.total_pages });
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        if ((error as any)?.code === 'ERR_CANCELED') return;
+        Swal.fire({ icon: 'error', title: 'Gagal memuat data', text: getApiErrorMessage(error) });
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoadingList(false);
+      });
+
+    return () => { cancelled = true; controller.abort(); };
+  }, [page, perPage, search, statusFilter, refreshKey]);
+
+  const handleSearch = useCallback((s: string) => { setPage(1); setSearch(s); }, []);
+  const handlePageChange = useCallback((p: number) => setPage(p), []);
+  const handlePerPageChange = useCallback((pp: number) => { setPage(1); setPerPage(pp); }, []);
 
   const columns: Column[] = [
-    {
-      key: 'no_invoice',
-      header: 'No Invoice',
-    },
-    {
-      key: 'name_merchant',
-      header: 'Nama Merchant',
-    },
+    { key: 'merchant_name', header: 'Merchant' },
     {
       key: 'amount',
       header: 'Amount',
-      render: (value) => formatRupiah(value as number),
+      render: (value) => formatRupiah(Number(value)),
     },
-    {
-      key: 'method',
-      header: 'Method',
-    },
+    { key: 'description', header: 'Deskripsi' },
+    { key: 'payment_type', header: 'Type' },
     {
       key: 'status',
       header: 'Status',
       render: (value) => {
-        const status = value as keyof typeof statusColors;
-        const color = statusColors[status] ?? Colors.textSecondary;
+        const color = statusColors[value as string] ?? Colors.textSecondary;
         return (
           <Box
             as="span"
@@ -108,40 +128,34 @@ const Invoice = (): React.JSX.Element => {
         );
       },
     },
-    {
-      key: 'due_date',
-      header: 'Due Date',
-    },
-    {
-      key: 'created_at',
-      header: 'Created At',
-    },
+    { key: 'due_date', header: 'Due Date', render: (v) => formatDate(v) },
+    { key: 'created_at', header: 'Created At', render: (v) => formatDate(v) },
   ];
 
-  const validateInvoiceForm = () => {
+  const closeCreateModal = () => {
+    setIsCreateModalOpen(false);
+    setForm(getInitialForm());
+    setFormErrors({});
+  };
+
+  const validateForm = () => {
     const errors: InvoiceFormErrors = {};
-    const amount = Number(invoiceForm.amount);
+    const amount = Number(form.amount);
 
-    if (!invoiceForm.name_merchant.trim()) {
-      errors.name_merchant = 'Nama merchant wajib diisi.';
-    }
-
-    if (!invoiceForm.email.trim()) {
-      errors.email = 'Email wajib diisi.';
-    } else if (!isValidEmail(invoiceForm.email)) {
-      errors.email = 'Format email tidak valid.';
-    }
-
-    if (!invoiceForm.amount.trim()) {
+    if (!form.amount.trim()) {
       errors.amount = 'Amount wajib diisi.';
     } else if (Number.isNaN(amount) || amount <= 0) {
       errors.amount = 'Amount harus lebih dari 0.';
     }
 
-    if (!invoiceForm.due_date) {
+    if (!form.description.trim()) {
+      errors.description = 'Deskripsi wajib diisi.';
+    }
+
+    if (!form.due_date) {
       errors.due_date = 'Due date wajib diisi.';
-    } else if (!isFutureOrToday(invoiceForm.due_date)) {
-      errors.due_date = 'Due date minimal hari ini.';
+    } else if (new Date(form.due_date) < new Date()) {
+      errors.due_date = 'Due date tidak boleh di masa lalu.';
     }
 
     setFormErrors(errors);
@@ -150,82 +164,75 @@ const Invoice = (): React.JSX.Element => {
 
   const handleCreateInvoice = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (!validateForm()) return;
 
-    if (!validateInvoiceForm()) {
-      await Swal.fire({
-        icon: 'error',
-        title: 'Form belum valid',
-        text: 'Periksa kembali error pada form invoice.',
+    setIsSubmitting(true);
+    try {
+      await createInvoiceApi({
+        amount: Number(form.amount),
+        description: form.description.trim(),
+        due_date: new Date(form.due_date).toISOString(),
       });
-      return;
+      closeCreateModal();
+      setRefreshKey((k) => k + 1);
+      Swal.fire({
+        icon: 'success',
+        title: 'Invoice berhasil dibuat',
+        text: 'Invoice sudah ditambahkan.',
+        confirmButtonColor: Colors.primary,
+      });
+    } catch (error) {
+      Swal.fire({ icon: 'error', title: 'Gagal membuat invoice', text: getApiErrorMessage(error) });
+    } finally {
+      setIsSubmitting(false);
     }
-
-    const result = await Swal.fire({
-      icon: 'question',
-      title: 'Buat invoice baru?',
-      text: 'Invoice akan masuk dengan status PENDING.',
-      showCancelButton: true,
-      confirmButtonText: 'Ya, buat',
-      cancelButtonText: 'Batal',
-      confirmButtonColor: Colors.primary,
-    });
-
-    if (!result.isConfirmed) return;
-
-    const newInvoice: InvoiceRow = {
-      no_invoice: createInvoiceNumber(invoiceRows),
-      name_merchant: invoiceForm.name_merchant.trim(),
-      email: invoiceForm.email.trim(),
-      amount: Number(invoiceForm.amount),
-      method: invoiceForm.method,
-      status: 'PENDING',
-      due_date: invoiceForm.due_date,
-      created_at: getTodayDate(),
-    };
-
-    setInvoiceRows((currentRows) => [newInvoice, ...currentRows]);
-    setInvoiceForm(initialInvoiceForm);
-    setFormErrors({});
-    setIsCreateModalOpen(false);
-
-    await Swal.fire({
-      icon: 'success',
-      title: 'Invoice berhasil dibuat',
-      text: `${newInvoice.no_invoice} sudah ditambahkan.`,
-      confirmButtonColor: Colors.primary,
-    });
   };
 
-  const handleApproval = async (
-    invoice: InvoiceRow,
-    status: 'APPROVED' | 'REJECTED',
+  const handleInvoiceAction = (
+    invoice: Invoice,
+    action: 'approve' | 'reject',
+    note: string,
   ) => {
-    const isApprove = status === 'APPROVED';
+    setSelectedInvoice(null);
+    reviewInvoiceApi(invoice.id, { action, note })
+      .then(() => {
+        setRefreshKey((k) => k + 1);
+        Swal.fire({
+          icon: 'success',
+          title: 'Status invoice diperbarui',
+          text: `Invoice berhasil di-${action}.`,
+          confirmButtonColor: Colors.primary,
+        });
+      })
+      .catch((error) => {
+        Swal.fire({ icon: 'error', title: 'Gagal memperbarui status', text: getApiErrorMessage(error) });
+      });
+  };
+
+  const handleDelete = async (invoice: Invoice) => {
     const result = await Swal.fire({
       icon: 'warning',
-      title: `${isApprove ? 'Approve' : 'Reject'} invoice?`,
-      text: `${invoice.no_invoice} akan diubah menjadi ${status}.`,
+      title: 'Hapus invoice?',
+      text: 'Invoice akan dihapus secara permanen.',
       showCancelButton: true,
-      confirmButtonText: isApprove ? 'Ya, approve' : 'Ya, reject',
+      confirmButtonText: 'Ya, hapus',
       cancelButtonText: 'Batal',
-      confirmButtonColor: isApprove ? Colors.success : Colors.danger,
+      confirmButtonColor: Colors.danger,
     });
 
     if (!result.isConfirmed) return;
 
-    setInvoiceRows((currentRows) =>
-      currentRows.map((row) =>
-        row.no_invoice === invoice.no_invoice ? { ...row, status } : row,
-      ),
-    );
-    setSelectedInvoice(null);
-
-    await Swal.fire({
-      icon: 'success',
-      title: 'Status invoice diperbarui',
-      text: `${invoice.no_invoice} sekarang ${status}.`,
-      confirmButtonColor: Colors.primary,
-    });
+    try {
+      await deleteInvoiceApi(invoice.id);
+      setRefreshKey((k) => k + 1);
+      Swal.fire({
+        icon: 'success',
+        title: 'Invoice dihapus',
+        confirmButtonColor: Colors.primary,
+      });
+    } catch (error) {
+      Swal.fire({ icon: 'error', title: 'Gagal menghapus invoice', text: getApiErrorMessage(error) });
+    }
   };
 
   return (
@@ -235,20 +242,40 @@ const Invoice = (): React.JSX.Element => {
         subtitle="History Invoice and Create Invoice"
       />
 
-      {!isAdmin && (
-        <Flex justifyContent="end">
+      <Flex justify="space-between" align="center" wrap="wrap" gap={3}>
+        <chakra.select
+          value={statusFilter}
+          onChange={(e) => { setPage(1); setStatusFilter(e.target.value); }}
+          style={{
+            width: '180px',
+            borderRadius: '8px',
+            backgroundColor: '#F8FAFC',
+            borderColor: Colors.borderPrimary,
+            borderStyle: 'solid',
+            borderWidth: '1px',
+            padding: '8px 12px',
+            fontSize: '14px',
+          }}
+        >
+          {INVOICE_STATUS_OPTIONS.map((s) => (
+            <option key={s} value={s}>{s || 'Semua Status'}</option>
+          ))}
+        </chakra.select>
+
+        {!isAdmin && (
           <Button
             size="sm"
-            bg={'#2e8c73'}
+            bg="#2e8c73"
             minW={['100%', 125]}
-            borderRadius={'5px'}
+            borderRadius="5px"
+            ml="auto"
             onClick={() => setIsCreateModalOpen(true)}
           >
             <FaPlus />
             Create Invoice
           </Button>
-        </Flex>
-      )}
+        )}
+      </Flex>
 
       <Box
         bg={Colors.white}
@@ -258,18 +285,31 @@ const Invoice = (): React.JSX.Element => {
         boxShadow={Colors.cardShadow}
       >
         <Table
-          data={paginatedData}
+          data={invoices}
           columns={columns}
-          pagination={pagination}
-          onSearch={onSearch}
-          onPageChange={onPageChange}
-          onPerPageChange={onPerPageChange}
+          isLoading={isLoadingList}
+          pagination={{
+            total: paginationMeta.total,
+            page,
+            perPage,
+            totalPages: paginationMeta.total_pages,
+          }}
+          onPageChange={handlePageChange}
+          onPerPageChange={handlePerPageChange}
+          onSearch={handleSearch}
           actions={[
             {
               icon: <FaEye />,
               label: 'Detail',
-              onClick: (row) => setSelectedInvoice(row as InvoiceRow),
+              onClick: (row) => setSelectedInvoice(row as Invoice),
               bg: '#4253d1',
+            },
+            {
+              icon: <FaTrash />,
+              label: 'Hapus',
+              onClick: (row) => handleDelete(row as Invoice),
+              bg: Colors.danger,
+              isVisible: () => isAdmin,
             },
           ]}
         />
@@ -282,11 +322,7 @@ const Invoice = (): React.JSX.Element => {
         onClose={closeCreateModal}
         footer={
           <>
-            <Button
-              variant="outline"
-              borderRadius="xl"
-              onClick={closeCreateModal}
-            >
+            <Button variant="outline" borderRadius="xl" onClick={closeCreateModal}>
               Batal
             </Button>
             <Button
@@ -296,8 +332,9 @@ const Invoice = (): React.JSX.Element => {
               bg={Colors.primary}
               color="white"
               _hover={{ bg: Colors.primaryDark }}
+              disabled={isSubmitting}
             >
-              Simpan Invoice
+              {isSubmitting ? 'Menyimpan...' : 'Simpan Invoice'}
             </Button>
           </>
         }
@@ -305,119 +342,44 @@ const Invoice = (): React.JSX.Element => {
         <form id="create-invoice-form" onSubmit={handleCreateInvoice}>
           <VStack gap="4" align="stretch">
             <Box>
-              <Text fontSize="sm" mb="2" fontWeight="medium">
-                Nama Merchant
-              </Text>
-              <Input
-                value={invoiceForm.name_merchant}
-                placeholder="Toko Sukses Jaya"
-                borderRadius="xl"
-                onChange={(event) =>
-                  setInvoiceForm((current) => ({
-                    ...current,
-                    name_merchant: event.target.value,
-                  }))
-                }
-              />
-              {formErrors.name_merchant && (
-                <Text mt="2" fontSize="sm" color={Colors.danger}>
-                  {formErrors.name_merchant}
-                </Text>
-              )}
-            </Box>
-
-            <Box>
-              <Text fontSize="sm" mb="2" fontWeight="medium">
-                Email Customer
-              </Text>
-              <Input
-                type="email"
-                value={invoiceForm.email}
-                placeholder="customer@email.com"
-                borderRadius="xl"
-                onChange={(event) =>
-                  setInvoiceForm((current) => ({
-                    ...current,
-                    email: event.target.value,
-                  }))
-                }
-              />
-              {formErrors.email && (
-                <Text mt="2" fontSize="sm" color={Colors.danger}>
-                  {formErrors.email}
-                </Text>
-              )}
-            </Box>
-
-            <Box>
-              <Text fontSize="sm" mb="2" fontWeight="medium">
-                Amount
-              </Text>
+              <Text fontSize="sm" mb="2" fontWeight="medium">Amount</Text>
               <Input
                 type="number"
                 min="1"
-                value={invoiceForm.amount}
-                placeholder="150000"
+                value={form.amount}
+                placeholder="500000"
                 borderRadius="xl"
-                onChange={(event) =>
-                  setInvoiceForm((current) => ({
-                    ...current,
-                    amount: event.target.value,
-                  }))
-                }
+                onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))}
               />
               {formErrors.amount && (
-                <Text mt="2" fontSize="sm" color={Colors.danger}>
-                  {formErrors.amount}
-                </Text>
+                <Text mt="2" fontSize="sm" color={Colors.danger}>{formErrors.amount}</Text>
               )}
             </Box>
 
             <Box>
-              <Text fontSize="sm" mb="2" fontWeight="medium">
-                Method
-              </Text>
-              <chakra.select
-                value={invoiceForm.method}
-                onChange={(event) =>
-                  setInvoiceForm((current) => ({
-                    ...current,
-                    method: event.target.value,
-                  }))
-                }
-                style={{
-                  width: '100%',
-                  borderRadius: '12px',
-                  border: `1px solid ${Colors.borderPrimary}`,
-                  padding: '12px 14px',
-                }}
-              >
-                <option value="WALLET">WALLET</option>
-                <option value="VA_DUMMY">VA_DUMMY</option>
-                <option value="EWALLET_DUMMY">EWALLET_DUMMY</option>
-              </chakra.select>
+              <Text fontSize="sm" mb="2" fontWeight="medium">Deskripsi</Text>
+              <Input
+                value={form.description}
+                placeholder="Jasa desain logo"
+                borderRadius="xl"
+                onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+              />
+              {formErrors.description && (
+                <Text mt="2" fontSize="sm" color={Colors.danger}>{formErrors.description}</Text>
+              )}
             </Box>
 
             <Box>
-              <Text fontSize="sm" mb="2" fontWeight="medium">
-                Due Date
-              </Text>
+              <Text fontSize="sm" mb="2" fontWeight="medium">Due Date & Time</Text>
               <Input
-                type="date"
-                min={getTodayDate()}
-                value={invoiceForm.due_date}
+                type="datetime-local"
+                min={getNowDatetime()}
+                value={form.due_date}
                 borderRadius="xl"
-                onChange={(event) =>
-                  setInvoiceForm((current) => ({
-                    ...current,
-                    due_date: event.target.value,
-                  }))
-                }
+                onChange={(e) => setForm((f) => ({ ...f, due_date: e.target.value }))}
               />
               {formErrors.due_date && (
-                <Text mt="2" fontSize="sm" color={Colors.danger}>
-                  {formErrors.due_date}
-                </Text>
+                <Text mt="2" fontSize="sm" color={Colors.danger}>{formErrors.due_date}</Text>
               )}
             </Box>
           </VStack>
@@ -429,11 +391,10 @@ const Invoice = (): React.JSX.Element => {
         invoice={selectedInvoice}
         isAdmin={isAdmin}
         onClose={() => setSelectedInvoice(null)}
-        onApprove={(invoice) => handleApproval(invoice, 'APPROVED')}
-        onReject={(invoice) => handleApproval(invoice, 'REJECTED')}
+        onAction={handleInvoiceAction}
       />
     </VStack>
   );
 };
 
-export default Invoice;
+export default InvoicePage;

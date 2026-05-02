@@ -29,7 +29,7 @@ function PrivateRoutes(): React.ReactElement {
       />
 
       <Route path="/payment" element={<Payment />} />
-      <Route path="/payment/:invoiceNumber" element={<PaymentDetail />} />
+      <Route path="/payment/:token" element={<PaymentDetail />} />
 
       <Route
         path="/"

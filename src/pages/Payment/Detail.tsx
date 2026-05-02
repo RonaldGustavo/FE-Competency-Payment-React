@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Box,
   Button,
@@ -6,6 +6,7 @@ import {
   Flex,
   Grid,
   Icon,
+  Spinner,
   Text,
   VStack,
 } from '@chakra-ui/react';
@@ -19,91 +20,105 @@ import {
   FaMobileAlt,
   FaWallet,
 } from 'react-icons/fa';
+import moment from 'moment';
+import Swal from 'sweetalert2';
 import Colors from '../../constant/color';
-import dataInvoice from '../../mock/dataInvoice.json';
+import { formatRupiah } from '../../utils/validation';
+import { getApiErrorMessage } from '../../utils/apiError';
+import { getInvoiceByTokenApi, payInvoiceApi } from '../../features/invoice/InvoiceService';
+import type { Invoice, PaymentMethodType } from '../../interface/invoice';
+import { statusColors } from '../../constant/status';
 
-type PaymentMethod = 'WALLET' | 'VA_DUMMY' | 'EWALLET_DUMMY';
-
-interface InvoiceData {
-  no_invoice: string;
-  name_merchant: string;
-  amount: number;
-  method: PaymentMethod;
-  status: string;
-  due_date: string;
-  created_at: string;
-}
-
-const invoices = dataInvoice as InvoiceData[];
+const formatDate = (value: string | null | undefined) =>
+  value ? moment(value).format('DD MMMM YYYY HH:mm:ss') : '-';
 
 const paymentMethods: Array<{
-  value: PaymentMethod;
+  value: PaymentMethodType;
   label: string;
   description: string;
   icon: typeof FaWallet;
 }> = [
-  {
-    value: 'WALLET',
-    label: 'Wallet',
-    description: 'Saldo Ronald Payment',
-    icon: FaWallet,
-  },
-  {
-    value: 'VA_DUMMY',
-    label: 'VA Dummy',
-    description: 'Virtual account simulasi',
-    icon: FaCreditCard,
-  },
-  {
-    value: 'EWALLET_DUMMY',
-    label: 'E-Wallet Dummy',
-    description: 'Dompet digital simulasi',
-    icon: FaMobileAlt,
-  },
+  { value: 'WALLET', label: 'Wallet', description: 'Saldo Ronald Payment', icon: FaWallet },
+  { value: 'VA_DUMMY', label: 'VA Dummy', description: 'Virtual account simulasi', icon: FaCreditCard },
+  { value: 'EWALLET_DUMMY', label: 'E-Wallet Dummy', description: 'Dompet digital simulasi', icon: FaMobileAlt },
 ];
-
-const formatCurrency = (amount: number) =>
-  new Intl.NumberFormat('id-ID', {
-    style: 'currency',
-    currency: 'IDR',
-    maximumFractionDigits: 0,
-  }).format(amount);
-
-const formatDate = (date: string) =>
-  new Intl.DateTimeFormat('id-ID', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-  }).format(new Date(date));
-
-const getStatusColor = (status: string) => {
-  const statusColors: Record<string, string> = {
-    PAID: Colors.success,
-    PENDING: Colors.warning,
-    FAILED: Colors.danger,
-    EXPIRED: Colors.textMuted,
-  };
-
-  return statusColors[status] ?? Colors.textSecondary;
-};
 
 export default function PaymentDetail(): React.JSX.Element {
   const navigate = useNavigate();
-  const { invoiceNumber } = useParams<{ invoiceNumber: string }>();
-  const invoice = useMemo(
-    () =>
-      invoices.find(
-        (item) =>
-          item.no_invoice.toLowerCase() ===
-          decodeURIComponent(invoiceNumber ?? '').toLowerCase(),
-      ),
-    [invoiceNumber],
-  );
-  const [selectedMethod, setSelectedMethod] = useState<PaymentMethod>(
-    invoice?.method ?? 'WALLET',
-  );
+  const { token } = useParams<{ token: string }>();
 
-  if (!invoice) {
+  const [invoice, setInvoice] = useState<Invoice | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
+  const [isPaying, setIsPaying] = useState(false);
+  const [selectedMethod, setSelectedMethod] = useState<PaymentMethodType>('WALLET');
+
+  useEffect(() => {
+    if (!token) {
+      setNotFound(true);
+      setIsLoading(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    let cancelled = false;
+
+    setIsLoading(true);
+    getInvoiceByTokenApi(decodeURIComponent(token), controller.signal)
+      .then((data) => {
+        if (cancelled) return;
+        setInvoice(data);
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        if ((error as any)?.code === 'ERR_CANCELED') return;
+        setNotFound(true);
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoading(false);
+      });
+
+    return () => { cancelled = true; controller.abort(); };
+  }, [token]);
+
+  const handlePay = async () => {
+    if (!token) return;
+
+    setIsPaying(true);
+    try {
+      const updated = await payInvoiceApi(decodeURIComponent(token), { payment_type: selectedMethod });
+      setInvoice(updated);
+      Swal.fire({
+        icon: 'success',
+        title: 'Pembayaran Berhasil',
+        text: `Invoice berhasil dibayar menggunakan ${selectedMethod}.`,
+        confirmButtonColor: Colors.primary,
+      });
+    } catch (error) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Pembayaran Gagal',
+        text: getApiErrorMessage(error),
+      });
+    } finally {
+      setIsPaying(false);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <Flex
+        minH="100vh"
+        align="center"
+        justify="center"
+        bg={`linear-gradient(135deg, ${Colors.primaryLight} 0%, ${Colors.bgPrimary} 100%)`}
+      >
+        <Spinner size="xl" color={Colors.primary} />
+      </Flex>
+    );
+  }
+
+  if (notFound || !invoice) {
     return (
       <Flex
         minH="100vh"
@@ -128,18 +143,14 @@ export default function PaymentDetail(): React.JSX.Element {
               borderRadius="2xl"
               bg={Colors.primaryLight}
             >
-              <Icon
-                as={FaFileInvoiceDollar}
-                boxSize="7"
-                color={Colors.primary}
-              />
+              <Icon as={FaFileInvoiceDollar} boxSize="7" color={Colors.primary} />
             </Flex>
             <Box>
               <Text fontSize="2xl" fontWeight="bold" color={Colors.textPrimary}>
                 Invoice Tidak Ditemukan
               </Text>
               <Text mt="2" color={Colors.textSecondary}>
-                Nomor invoice yang dimasukkan tidak tersedia.
+                Payment token yang dimasukkan tidak tersedia atau sudah tidak berlaku.
               </Text>
             </Box>
             <Button
@@ -159,7 +170,9 @@ export default function PaymentDetail(): React.JSX.Element {
     );
   }
 
-  const statusColor = getStatusColor(invoice.status);
+  const statusColor = statusColors[invoice.status] ?? Colors.textSecondary;
+  const TERMINAL_STATUSES = ['Paid', 'Failed', 'Success', 'Expired'];
+  const isPaymentDisabled = TERMINAL_STATUSES.includes(invoice.status);
 
   return (
     <Flex
@@ -179,6 +192,7 @@ export default function PaymentDetail(): React.JSX.Element {
           border={`1px solid ${Colors.borderLight}`}
           overflow="hidden"
         >
+          {/* Header banner */}
           <Flex
             direction={{ base: 'column', md: 'row' }}
             justify="space-between"
@@ -200,69 +214,47 @@ export default function PaymentDetail(): React.JSX.Element {
 
               <Box>
                 <Text fontSize="sm" opacity={0.86}>
-                  {invoice.no_invoice}
+                  {invoice.merchant_name ?? '-'}
                 </Text>
-                <Text
-                  fontSize={{ base: '3xl', md: '4xl' }}
-                  fontWeight="bold"
-                >
-                  {formatCurrency(invoice.amount)}
+                <Text fontSize={{ base: '3xl', md: '4xl' }} fontWeight="bold">
+                  {formatRupiah(Number(invoice.amount))}
                 </Text>
                 <Text mt="2" opacity={0.9}>
-                  {invoice.name_merchant}
+                  {invoice.description}
                 </Text>
               </Box>
             </VStack>
 
             <Box
               alignSelf={{ base: 'flex-start', md: 'center' }}
-              border={`1px solid rgba(255, 255, 255, 0.28)`}
+              border="1px solid rgba(255, 255, 255, 0.28)"
               borderRadius="2xl"
               px="5"
               py="4"
             >
-              <Text fontSize="xs" opacity={0.82}>
-                Status Pembayaran
-              </Text>
-              <Text mt="1" fontSize="lg" fontWeight="bold">
-                {invoice.status}
-              </Text>
+              <Text fontSize="xs" opacity={0.82}>Status Pembayaran</Text>
+              <Text mt="1" fontSize="lg" fontWeight="bold">{invoice.status}</Text>
             </Box>
           </Flex>
 
           <Box p={{ base: 8, md: 10 }}>
+            {/* Info grid */}
             <Grid templateColumns={{ base: '1fr', md: 'repeat(4, 1fr)' }} gap="4">
-              <Box
-                border={`1px solid ${Colors.borderPrimary}`}
-                borderRadius="2xl"
-                p="5"
-              >
-                <Text fontSize="sm" color={Colors.textSecondary}>
-                  Amount
-                </Text>
+              <Box border={`1px solid ${Colors.borderPrimary}`} borderRadius="2xl" p="5">
+                <Text fontSize="sm" color={Colors.textSecondary}>Amount</Text>
                 <Text mt="2" fontWeight="bold" color={Colors.textPrimary}>
-                  {formatCurrency(invoice.amount)}
+                  {formatRupiah(Number(invoice.amount))}
                 </Text>
               </Box>
 
-              <Box
-                border={`1px solid ${Colors.borderPrimary}`}
-                borderRadius="2xl"
-                p="5"
-              >
-                <Text fontSize="sm" color={Colors.textSecondary}>
-                  Status
-                </Text>
+              <Box border={`1px solid ${Colors.borderPrimary}`} borderRadius="2xl" p="5">
+                <Text fontSize="sm" color={Colors.textSecondary}>Status</Text>
                 <Text mt="2" fontWeight="bold" color={statusColor}>
                   {invoice.status}
                 </Text>
               </Box>
 
-              <Box
-                border={`1px solid ${Colors.borderPrimary}`}
-                borderRadius="2xl"
-                p="5"
-              >
+              <Box border={`1px solid ${Colors.borderPrimary}`} borderRadius="2xl" p="5">
                 <Flex align="center" gap="2" color={Colors.textSecondary}>
                   <Icon as={FaCalendarAlt} boxSize="4" />
                   <Text fontSize="sm">Created At</Text>
@@ -272,11 +264,7 @@ export default function PaymentDetail(): React.JSX.Element {
                 </Text>
               </Box>
 
-              <Box
-                border={`1px solid ${Colors.borderPrimary}`}
-                borderRadius="2xl"
-                p="5"
-              >
+              <Box border={`1px solid ${Colors.borderPrimary}`} borderRadius="2xl" p="5">
                 <Flex align="center" gap="2" color={Colors.textSecondary}>
                   <Icon as={FaCalendarAlt} boxSize="4" />
                   <Text fontSize="sm">Due Date</Text>
@@ -287,7 +275,8 @@ export default function PaymentDetail(): React.JSX.Element {
               </Box>
             </Grid>
 
-            <Box mt="8">
+            {/* Payment method selector */}
+            <Box mt="8" opacity={isPaymentDisabled ? 0.45 : 1} pointerEvents={isPaymentDisabled ? 'none' : 'auto'}>
               <Text fontSize="lg" fontWeight="bold" color={Colors.textPrimary}>
                 Metode Pembayaran
               </Text>
@@ -298,21 +287,19 @@ export default function PaymentDetail(): React.JSX.Element {
               >
                 {paymentMethods.map((method) => {
                   const isSelected = selectedMethod === method.value;
-
                   return (
                     <Button
                       key={method.value}
                       h="auto"
                       justifyContent="flex-start"
                       borderRadius="2xl"
-                      border={`1px solid ${
-                        isSelected ? Colors.primary : Colors.borderPrimary
-                      }`}
+                      border={`1px solid ${isSelected ? Colors.primary : Colors.borderPrimary}`}
                       bg={isSelected ? Colors.primaryLight : Colors.white}
                       color={Colors.textPrimary}
                       p="5"
-                      _hover={{ borderColor: Colors.primary }}
-                      onClick={() => setSelectedMethod(method.value)}
+                      _hover={{ borderColor: isPaymentDisabled ? Colors.borderPrimary : Colors.primary }}
+                      onClick={() => !isPaymentDisabled && setSelectedMethod(method.value)}
+                      cursor={isPaymentDisabled ? 'not-allowed' : 'pointer'}
                     >
                       <Flex align="center" gap="4" textAlign="left">
                         <Flex
@@ -327,11 +314,7 @@ export default function PaymentDetail(): React.JSX.Element {
                         </Flex>
                         <Box>
                           <Text fontWeight="bold">{method.label}</Text>
-                          <Text
-                            mt="1"
-                            fontSize="xs"
-                            color={Colors.textSecondary}
-                          >
+                          <Text mt="1" fontSize="xs" color={Colors.textSecondary}>
                             {method.description}
                           </Text>
                         </Box>
@@ -347,12 +330,18 @@ export default function PaymentDetail(): React.JSX.Element {
               w="full"
               size="lg"
               borderRadius="xl"
-              bg={Colors.primary}
-              color="white"
-              _hover={{ bg: Colors.primaryDark }}
+              bg={isPaymentDisabled ? Colors.bgTertiary : Colors.primary}
+              color={isPaymentDisabled ? Colors.textMuted : 'white'}
+              _hover={{ bg: isPaymentDisabled ? Colors.bgTertiary : Colors.primaryDark }}
+              disabled={isPaymentDisabled || isPaying}
+              onClick={handlePay}
             >
               <Icon as={FaCheckCircle} />
-              Bayar dengan {selectedMethod}
+              {isPaymentDisabled
+                ? `${invoice.status}${invoice.payment_type ? ` via ${invoice.payment_type}` : ''}`
+                : isPaying
+                ? 'Memproses...'
+                : `Bayar dengan ${selectedMethod}`}
             </Button>
           </Box>
         </VStack>

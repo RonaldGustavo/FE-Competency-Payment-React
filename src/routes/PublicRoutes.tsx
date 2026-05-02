@@ -30,7 +30,7 @@ export default function PublicRoutes (): React.JSX.Element {
       <Route path="/sign-in" element={<Login />} />
       <Route path="/sign-up" element={<SignUp />} />
       <Route path="/payment" element={<Payment />} />
-      <Route path="/payment/:invoiceNumber" element={<PaymentDetail />} />
+      <Route path="/payment/:token" element={<PaymentDetail />} />
       <Route path="*" element={<Navigate to="/sign-in" replace />} />
     </Routes>
   )
