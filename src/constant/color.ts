@@ -3,6 +3,7 @@ const Colors = {
   primary: '#3B82F6',
   primaryDark: '#1E40AF',
   primaryLight: '#DBEAFE',
+  secondary: '#c351a2',
   success: '#10B981',
   warning: '#F59E0B',
   danger: '#EF4444',

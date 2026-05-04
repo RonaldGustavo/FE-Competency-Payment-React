@@ -18,7 +18,7 @@ import PageHeader from '../../components/PageHeader/PageHeader';
 import { FaEye, FaPlus, FaTrash } from 'react-icons/fa';
 import AppModal from '../../components/AppModal/AppModal';
 import { formatRupiah, getNowDatetime } from '../../utils/validation';
-import { useAppSelector } from '../../config/hook';
+import { useAppSelector, useAppDispatch } from '../../config/hook';
 import type { Invoice } from '../../interface/invoice';
 import {
   createInvoiceApi,
@@ -26,6 +26,14 @@ import {
   getInvoicesApi,
   reviewInvoiceApi,
 } from '../../features/invoice/InvoiceService';
+import {
+  setInvoiceLoading,
+  setInvoiceList,
+  setInvoicePage,
+  setInvoicePerPage,
+  setInvoiceSearch,
+  setInvoiceStatusFilter,
+} from '../../features/invoice/InvoiceSlice';
 import { getApiErrorMessage } from '../../utils/apiError';
 import InvoiceActionModal from './InvoiceActionModal';
 
@@ -49,21 +57,14 @@ const getInitialForm = (): InvoiceForm => ({
 });
 
 const InvoicePage = (): React.JSX.Element => {
+  const dispatch = useAppDispatch();
   const user = useAppSelector((state) => state.auth.user);
   const isAdmin = user?.role === 'Admin';
 
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [isLoadingList, setIsLoadingList] = useState(false);
-  const [page, setPage] = useState(1);
-  const [perPage, setPerPage] = useState(10);
-  const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
-  const [refreshKey, setRefreshKey] = useState(0);
-  const [paginationMeta, setPaginationMeta] = useState<Pick<any, 'total' | 'total_pages'>>({
-    total: 0,
-    total_pages: 1,
-  });
+  const { invoices, total, totalPages, page, perPage, search, statusFilter, isLoading } =
+    useAppSelector((state) => state.invoice);
 
+  const [refreshKey, setRefreshKey] = useState(0);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
@@ -75,12 +76,15 @@ const InvoicePage = (): React.JSX.Element => {
     const controller = new AbortController();
     let cancelled = false;
 
-    setIsLoadingList(true);
+    dispatch(setInvoiceLoading(true));
     getInvoicesApi({ page, per_page: perPage, search, status: statusFilter }, controller.signal)
       .then((result) => {
         if (cancelled) return;
-        setInvoices(result.invoices);
-        setPaginationMeta({ total: result.pagination.total, total_pages: result.pagination.total_pages });
+        dispatch(setInvoiceList({
+          invoices: result.invoices,
+          total: result.pagination.total,
+          totalPages: result.pagination.total_pages,
+        }));
       })
       .catch((error) => {
         if (cancelled) return;
@@ -88,17 +92,18 @@ const InvoicePage = (): React.JSX.Element => {
         Swal.fire({ icon: 'error', title: 'Gagal memuat data', text: getApiErrorMessage(error) });
       })
       .finally(() => {
-        if (!cancelled) setIsLoadingList(false);
+        if (!cancelled) dispatch(setInvoiceLoading(false));
       });
 
     return () => { cancelled = true; controller.abort(); };
-  }, [page, perPage, search, statusFilter, refreshKey]);
+  }, [page, perPage, search, statusFilter, refreshKey, dispatch]);
 
-  const handleSearch = useCallback((s: string) => { setPage(1); setSearch(s); }, []);
-  const handlePageChange = useCallback((p: number) => setPage(p), []);
-  const handlePerPageChange = useCallback((pp: number) => { setPage(1); setPerPage(pp); }, []);
+  const handleSearch = useCallback((s: string) => dispatch(setInvoiceSearch(s)), [dispatch]);
+  const handlePageChange = useCallback((p: number) => dispatch(setInvoicePage(p)), [dispatch]);
+  const handlePerPageChange = useCallback((pp: number) => dispatch(setInvoicePerPage(pp)), [dispatch]);
 
   const columns: Column[] = [
+    { key: 'id', header: 'No Invoice' },
     { key: 'merchant_name', header: 'Merchant' },
     {
       key: 'amount',
@@ -245,7 +250,7 @@ const InvoicePage = (): React.JSX.Element => {
       <Flex justify="space-between" align="center" wrap="wrap" gap={3}>
         <chakra.select
           value={statusFilter}
-          onChange={(e) => { setPage(1); setStatusFilter(e.target.value); }}
+          onChange={(e) => dispatch(setInvoiceStatusFilter(e.target.value))}
           style={{
             width: '180px',
             borderRadius: '8px',
@@ -287,13 +292,8 @@ const InvoicePage = (): React.JSX.Element => {
         <Table
           data={invoices}
           columns={columns}
-          isLoading={isLoadingList}
-          pagination={{
-            total: paginationMeta.total,
-            page,
-            perPage,
-            totalPages: paginationMeta.total_pages,
-          }}
+          isLoading={isLoading}
+          pagination={{ total, page, perPage, totalPages }}
           onPageChange={handlePageChange}
           onPerPageChange={handlePerPageChange}
           onSearch={handleSearch}

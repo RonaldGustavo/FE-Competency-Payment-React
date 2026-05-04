@@ -19,6 +19,14 @@ const ApiEndpoint = {
     paymentByToken: (token: string) => `/invoices/pay/${token}`,
     pay: (token: string) => `/invoices/pay/${token}`,
   },
+  refund: {
+    list: '/refunds',
+    create: '/refunds',
+    review: (id: string) => `/refunds/${id}/review`,
+  },
+  dashboard: {
+    summary: '/dashboard/summary',
+  },
 };
 
 export default ApiEndpoint;

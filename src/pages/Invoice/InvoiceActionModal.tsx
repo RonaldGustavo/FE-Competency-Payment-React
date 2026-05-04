@@ -23,7 +23,11 @@ interface InvoiceActionModalProps {
   invoice: Invoice | null;
   isAdmin: boolean;
   onClose: () => void;
-  onAction: (invoice: Invoice, action: 'approve' | 'reject', note: string) => void;
+  onAction: (
+    invoice: Invoice,
+    action: 'approve' | 'reject',
+    note: string,
+  ) => void;
 }
 
 const DetailItem = ({
@@ -61,7 +65,9 @@ export default function InvoiceActionModal({
   onAction,
 }: InvoiceActionModalProps): React.JSX.Element | null {
   const [note, setNote] = useState('');
-  const [pendingAction, setPendingAction] = useState<'approve' | 'reject' | null>(null);
+  const [pendingAction, setPendingAction] = useState<
+    'approve' | 'reject' | null
+  >(null);
   const [copied, setCopied] = useState(false);
 
   const handleCopyToken = (token: string) => {
@@ -107,20 +113,30 @@ export default function InvoiceActionModal({
       footer={
         pendingAction ? (
           <>
-            <Button variant="outline" borderRadius="xl" onClick={() => setPendingAction(null)}>
+            <Button
+              variant="outline"
+              borderRadius="xl"
+              onClick={() => setPendingAction(null)}
+            >
               Kembali
             </Button>
             <Button
               borderRadius="xl"
               bg={pendingAction === 'approve' ? Colors.success : Colors.danger}
               color="white"
-              _hover={{ bg: pendingAction === 'approve' ? '#047857' : '#B91C1C' }}
+              _hover={{
+                bg: pendingAction === 'approve' ? '#047857' : '#B91C1C',
+              }}
               onClick={handleConfirm}
             >
               {pendingAction === 'approve' ? (
-                <><Icon as={FaCheck} /> Ya, Approve</>
+                <>
+                  <Icon as={FaCheck} /> Ya, Approve
+                </>
               ) : (
-                <><Icon as={FaTimes} /> Ya, Reject</>
+                <>
+                  <Icon as={FaTimes} /> Ya, Reject
+                </>
               )}
             </Button>
           </>
@@ -200,7 +216,11 @@ export default function InvoiceActionModal({
 
         {!pendingAction ? (
           <>
-            <Grid templateColumns={{ base: '1fr', md: 'repeat(2, 1fr)' }} gap="4">
+            <DetailItem label="No Invoice" value={invoice.id} />
+            <Grid
+              templateColumns={{ base: '1fr', md: 'repeat(2, 1fr)' }}
+              gap="4"
+            >
               <DetailItem label="Type" value={invoice.payment_type} />
               <DetailItem label="Description" value={invoice.description} />
               <DetailItem
@@ -208,14 +228,25 @@ export default function InvoiceActionModal({
                 value={invoice.status}
                 color={statusColor}
               />
-              <DetailItem label="Email Merchant" value={invoice.merchant_email || '-'} />
-              <DetailItem label="Created At" value={formatDate(invoice.created_at)} />
-              <DetailItem label="Due Date" value={formatDate(invoice.due_date)} />
+              <DetailItem
+                label="Email Merchant"
+                value={invoice.merchant_email || '-'}
+              />
+              <DetailItem
+                label="Created At"
+                value={formatDate(invoice.created_at)}
+              />
+              <DetailItem
+                label="Due Date"
+                value={formatDate(invoice.due_date)}
+              />
             </Grid>
 
             {invoice.payment_token && (
               <Box>
-                <Text fontSize="sm" mb="2" fontWeight="medium">Payment Token</Text>
+                <Text fontSize="sm" mb="2" fontWeight="medium">
+                  Payment Token
+                </Text>
                 <Flex gap="2">
                   <Input
                     value={invoice.payment_token}
@@ -263,7 +294,9 @@ export default function InvoiceActionModal({
             textAlign="center"
           >
             <Text fontWeight="600" color={Colors.textPrimary}>
-              Invoice{invoice.merchant_name ? ` dari ${invoice.merchant_name}` : ''} sebesar{' '}
+              Invoice
+              {invoice.merchant_name ? ` dari ${invoice.merchant_name}` : ''}{' '}
+              sebesar{' '}
               <Text as="span" fontWeight="700">
                 {formatRupiah(Number(invoice.amount))}
               </Text>{' '}
@@ -271,7 +304,9 @@ export default function InvoiceActionModal({
               <Text
                 as="span"
                 fontWeight="700"
-                color={pendingAction === 'approve' ? Colors.success : Colors.danger}
+                color={
+                  pendingAction === 'approve' ? Colors.success : Colors.danger
+                }
               >
                 {pendingAction === 'approve' ? 'APPROVE' : 'REJECT'}
               </Text>

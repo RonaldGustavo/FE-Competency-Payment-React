@@ -19,36 +19,39 @@ import PageHeader from '../../components/PageHeader/PageHeader';
 import { FaCheck, FaEdit, FaPlus, FaTimes } from 'react-icons/fa';
 import AppModal from '../../components/AppModal/AppModal';
 import { formatRupiah } from '../../utils/validation';
-import { useAppSelector } from '../../config/hook';
-import type { Pagination, TopUp } from '../../interface/wallet';
+import { useAppSelector, useAppDispatch } from '../../config/hook';
+import type { TopUp } from '../../interface/wallet';
 import {
   createTopUpApi,
   getTopUpsApi,
   reviewTopUpApi,
 } from '../../features/wallet/WalletService';
+import {
+  setWalletLoading,
+  setTopUpList,
+  setWalletPage,
+  setWalletPerPage,
+  setWalletSearch,
+} from '../../features/wallet/WalletSlice';
 import { getApiErrorMessage } from '../../utils/apiError';
 
 const formatDate = (value: string | null | undefined) =>
   value ? moment(value).format('DD MMMM YYYY HH:mm:ss') : '-';
 
 const Wallet = (): React.JSX.Element => {
+  const dispatch = useAppDispatch();
   const user = useAppSelector((state) => state.auth.user);
   const isAdmin = user?.role === 'Admin';
 
-  const [topUps, setTopUps] = useState<TopUp[]>([]);
-  const [isLoadingList, setIsLoadingList] = useState(false);
-  const [page, setPage] = useState(1);
-  const [perPage, setPerPage] = useState(10);
-  const [search, setSearch] = useState('');
-  const [refreshKey, setRefreshKey] = useState(0);
-  const [paginationMeta, setPaginationMeta] = useState<Pick<Pagination, 'total' | 'total_pages'>>({
-    total: 0,
-    total_pages: 1,
-  });
+  const { topUps, total, totalPages, page, perPage, search, isLoading } =
+    useAppSelector((state) => state.wallet);
 
+  const [refreshKey, setRefreshKey] = useState(0);
   const [selectedTopUp, setSelectedTopUp] = useState<TopUp | null>(null);
   const [reviewNote, setReviewNote] = useState('');
-  const [pendingAction, setPendingAction] = useState<'approve' | 'reject' | null>(null);
+  const [pendingAction, setPendingAction] = useState<
+    'approve' | 'reject' | null
+  >(null);
 
   const [isTopUpModalOpen, setIsTopUpModalOpen] = useState(false);
   const [amount, setAmount] = useState('');
@@ -59,42 +62,49 @@ const Wallet = (): React.JSX.Element => {
     const controller = new AbortController();
     let cancelled = false;
 
-    setIsLoadingList(true);
+    dispatch(setWalletLoading(true));
     getTopUpsApi({ page, per_page: perPage, search }, controller.signal)
       .then((result) => {
         if (cancelled) return;
-        setTopUps(result.top_ups);
-        setPaginationMeta({
-          total: result.pagination.total,
-          total_pages: result.pagination.total_pages,
-        });
+        dispatch(
+          setTopUpList({
+            topUps: result.top_ups,
+            total: result.pagination.total,
+            totalPages: result.pagination.total_pages,
+          }),
+        );
       })
       .catch((error) => {
         if (cancelled) return;
         if ((error as any)?.code === 'ERR_CANCELED') return;
-        Swal.fire({ icon: 'error', title: 'Gagal memuat data', text: getApiErrorMessage(error) });
+        Swal.fire({
+          icon: 'error',
+          title: 'Gagal memuat data',
+          text: getApiErrorMessage(error),
+        });
       })
       .finally(() => {
-        if (!cancelled) setIsLoadingList(false);
+        if (!cancelled) dispatch(setWalletLoading(false));
       });
 
     return () => {
       cancelled = true;
       controller.abort();
     };
-  }, [page, perPage, search, refreshKey]);
+  }, [page, perPage, search, refreshKey, dispatch]);
 
-  const handleSearch = useCallback((s: string) => {
-    setPage(1);
-    setSearch(s);
-  }, []);
-
-  const handlePageChange = useCallback((p: number) => setPage(p), []);
-
-  const handlePerPageChange = useCallback((pp: number) => {
-    setPage(1);
-    setPerPage(pp);
-  }, []);
+  const handleSearch = useCallback(
+    (s: string) => dispatch(setWalletSearch(s)),
+    [dispatch],
+  );
+  const handlePageChange = useCallback(
+    (p: number) => dispatch(setWalletPage(p)),
+    [dispatch],
+  );
+  const handlePerPageChange = useCallback(
+    (pp: number) => dispatch(setWalletPerPage(pp)),
+    [dispatch],
+  );
 
   const columns: Column[] = [
     { key: 'user_name', header: 'Merchant' },
@@ -223,19 +233,21 @@ const Wallet = (): React.JSX.Element => {
         subtitle="Top Up and History Wallet Saldo"
       />
 
-      <Flex justify="space-between" align="center" wrap="wrap" gap={3}>
-        <Button
-          size="sm"
-          bg={'#2e8c73'}
-          minW={['100%', 125]}
-          borderRadius={'5px'}
-          ml={isAdmin ? 'auto' : undefined}
-          onClick={() => setIsTopUpModalOpen(true)}
-        >
-          <FaPlus />
-          Top Up Wallet
-        </Button>
-      </Flex>
+      {!isAdmin && (
+        <Flex justify="end" align="center" wrap="wrap" gap={3}>
+          <Button
+            size="sm"
+            bg={'#2e8c73'}
+            minW={['100%', 125]}
+            borderRadius={'5px'}
+            ml={isAdmin ? 'auto' : undefined}
+            onClick={() => setIsTopUpModalOpen(true)}
+          >
+            <FaPlus />
+            Top Up Wallet
+          </Button>
+        </Flex>
+      )}
 
       <Box
         bg={Colors.white}
@@ -247,13 +259,8 @@ const Wallet = (): React.JSX.Element => {
         <Table
           data={topUps}
           columns={columns}
-          isLoading={isLoadingList}
-          pagination={{
-            total: paginationMeta.total,
-            page,
-            perPage,
-            totalPages: paginationMeta.total_pages,
-          }}
+          isLoading={isLoading}
+          pagination={{ total, page, perPage, totalPages }}
           onPageChange={handlePageChange}
           onPerPageChange={handlePerPageChange}
           onSearch={handleSearch}
@@ -285,7 +292,11 @@ const Wallet = (): React.JSX.Element => {
         onClose={closeTopUpModal}
         footer={
           <>
-            <Button variant="outline" borderRadius="xl" onClick={closeTopUpModal}>
+            <Button
+              variant="outline"
+              borderRadius="xl"
+              onClick={closeTopUpModal}
+            >
               Batal
             </Button>
             <Button
@@ -353,21 +364,33 @@ const Wallet = (): React.JSX.Element => {
               </Button>
               <Button
                 borderRadius="xl"
-                bg={pendingAction === 'approve' ? Colors.success : Colors.danger}
+                bg={
+                  pendingAction === 'approve' ? Colors.success : Colors.danger
+                }
                 color="white"
-                _hover={{ bg: pendingAction === 'approve' ? '#047857' : '#B91C1C' }}
+                _hover={{
+                  bg: pendingAction === 'approve' ? '#047857' : '#B91C1C',
+                }}
                 onClick={handleConfirmReview}
               >
                 {pendingAction === 'approve' ? (
-                  <><FaCheck /> Ya, Approve</>
+                  <>
+                    <FaCheck /> Ya, Approve
+                  </>
                 ) : (
-                  <><FaTimes /> Ya, Reject</>
+                  <>
+                    <FaTimes /> Ya, Reject
+                  </>
                 )}
               </Button>
             </>
           ) : (
             <>
-              <Button variant="outline" borderRadius="xl" onClick={closeApprovalModal}>
+              <Button
+                variant="outline"
+                borderRadius="xl"
+                onClick={closeApprovalModal}
+              >
                 Tutup
               </Button>
               {selectedTopUp && (
@@ -400,14 +423,16 @@ const Wallet = (): React.JSX.Element => {
       >
         {selectedTopUp && !pendingAction && (
           <VStack gap="4" align="stretch">
-            <Grid templateColumns={{ base: '1fr', md: 'repeat(2, 1fr)' }} gap="4">
+            <Grid
+              templateColumns={{ base: '1fr', md: 'repeat(2, 1fr)' }}
+              gap="4"
+            >
               {(
                 [
                   ['Merchant', selectedTopUp.user_name ?? '-'],
                   ['Amount', formatRupiah(selectedTopUp.amount)],
                   ['Status', selectedTopUp.status],
                   ['Created At', formatDate(selectedTopUp.created_at)],
-                  ['Updated At', formatDate(selectedTopUp.updated_at)],
                 ] as [string, string][]
               ).map(([label, value]) => (
                 <Box
@@ -449,7 +474,11 @@ const Wallet = (): React.JSX.Element => {
             textAlign="center"
           >
             <Text fontWeight="600" color={Colors.textPrimary}>
-              Top up{selectedTopUp.user_name ? ` dari ${selectedTopUp.user_name}` : ''} sebesar{' '}
+              Top up
+              {selectedTopUp.user_name
+                ? ` dari ${selectedTopUp.user_name}`
+                : ''}{' '}
+              sebesar{' '}
               <Text as="span" fontWeight="700">
                 {formatRupiah(selectedTopUp.amount)}
               </Text>{' '}
@@ -457,7 +486,9 @@ const Wallet = (): React.JSX.Element => {
               <Text
                 as="span"
                 fontWeight="700"
-                color={pendingAction === 'approve' ? Colors.success : Colors.danger}
+                color={
+                  pendingAction === 'approve' ? Colors.success : Colors.danger
+                }
               >
                 {pendingAction === 'approve' ? 'APPROVE' : 'REJECT'}
               </Text>

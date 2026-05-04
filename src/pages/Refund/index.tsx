@@ -1,101 +1,114 @@
-import React, { useState, type FormEvent } from 'react';
-import { Box, Button, Flex, Grid, Input, Text, VStack } from '@chakra-ui/react';
-import { useLocalTable } from '../../hooks/useLocalTable';
+import React, { useState, useCallback, useEffect, type FormEvent } from 'react';
+import {
+  Box,
+  Button,
+  Flex,
+  Grid,
+  Icon,
+  Input,
+  Text,
+  Textarea,
+  VStack,
+  chakra,
+} from '@chakra-ui/react';
+import moment from 'moment';
 import Swal from 'sweetalert2';
+import { FaCheck, FaEdit, FaPlus, FaTimes } from 'react-icons/fa';
 import Table from '../../components/Table/Table';
 import Colors from '../../constant/color';
 import type { Column } from '../../interface/global';
-import dataRefund from '../../mock/dataRefund.json';
 import { statusColors } from '../../constant/status';
 import PageHeader from '../../components/PageHeader/PageHeader';
-import { FaCheck, FaEdit, FaPlus, FaTimes } from 'react-icons/fa';
-import { useAppSelector } from '../../config/hook';
 import AppModal from '../../components/AppModal/AppModal';
-import { getTodayDate, isFutureOrToday, isValidEmail } from '../../utils/validation';
+import { useAppSelector, useAppDispatch } from '../../config/hook';
+import type { Refund } from '../../interface/refund';
+import {
+  createRefundApi,
+  getRefundsApi,
+  reviewRefundApi,
+} from '../../features/refund/RefundService';
+import {
+  setRefundLoading,
+  setRefundList,
+  setRefundPage,
+  setRefundPerPage,
+  setRefundSearch,
+  setRefundStatusFilter,
+} from '../../features/refund/RefundSlice';
+import { getApiErrorMessage } from '../../utils/apiError';
 
-interface RefundRow {
-  id: string;
-  transactionId: string;
-  customerName: string;
-  email?: string;
-  amount: number;
-  status: string;
-  requestDate: string;
-  reason: string;
-}
+const REFUND_STATUS_OPTIONS = ['', 'REQUESTED', 'APPROVED', 'REJECTED'] as const;
+
+const formatDate = (value: string | null | undefined) =>
+  value ? moment(value).format('DD MMMM YYYY HH:mm:ss') : '-';
 
 interface RefundForm {
-  transactionId: string;
-  customerName: string;
-  email: string;
-  amount: string;
-  requestDate: string;
+  invoice_id: string;
   reason: string;
 }
 
 type RefundFormErrors = Partial<Record<keyof RefundForm, string>>;
 
-const initialRefundForm: RefundForm = {
-  transactionId: '',
-  customerName: '',
-  email: '',
-  amount: '',
-  requestDate: getTodayDate(),
-  reason: '',
-};
+const initialForm: RefundForm = { invoice_id: '', reason: '' };
 
-const createRefundId = (rows: RefundRow[]) => {
-  const lastNumber = rows.reduce((max, row) => {
-    const current = Number(row.id.replace(/\D/g, ''));
-    return Number.isNaN(current) ? max : Math.max(max, current);
-  }, 0);
-
-  return `REF${String(lastNumber + 1).padStart(3, '0')}`;
-};
-
-const Refund = (): React.JSX.Element => {
+const RefundPage = (): React.JSX.Element => {
+  const dispatch = useAppDispatch();
   const user = useAppSelector((state) => state.auth.user);
   const isAdmin = user?.role === 'Admin';
-  const [refundRows, setRefundRows] = useState<RefundRow[]>(
-    dataRefund as RefundRow[],
-  );
-  const { paginatedData, pagination, onSearch, onPageChange, onPerPageChange } =
-    useLocalTable(refundRows);
-  const [selectedRefund, setSelectedRefund] = useState<RefundRow | null>(null);
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [refundForm, setRefundForm] = useState<RefundForm>(initialRefundForm);
-  const [formErrors, setFormErrors] = useState<RefundFormErrors>({});
 
-  const closeCreateModal = () => {
-    setIsCreateModalOpen(false);
-    setRefundForm(initialRefundForm);
-    setFormErrors({});
-  };
+  const { refunds, total, totalPages, page, perPage, search, statusFilter, isLoading } =
+    useAppSelector((state) => state.refund);
+
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [selectedRefund, setSelectedRefund] = useState<Refund | null>(null);
+  const [reviewNote, setReviewNote] = useState('');
+  const [pendingAction, setPendingAction] = useState<'approve' | 'reject' | null>(null);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [form, setForm] = useState<RefundForm>(initialForm);
+  const [formErrors, setFormErrors] = useState<RefundFormErrors>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [createApiError, setCreateApiError] = useState('');
+
+  useEffect(() => {
+    const controller = new AbortController();
+    let cancelled = false;
+
+    dispatch(setRefundLoading(true));
+    getRefundsApi({ page, per_page: perPage, search, status: statusFilter }, controller.signal)
+      .then((result) => {
+        if (cancelled) return;
+        dispatch(setRefundList({
+          refunds: result.refunds,
+          total: result.pagination.total,
+          totalPages: result.pagination.total_pages,
+        }));
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        if ((error as any)?.code === 'ERR_CANCELED') return;
+        Swal.fire({ icon: 'error', title: 'Gagal memuat data', text: getApiErrorMessage(error) });
+      })
+      .finally(() => {
+        if (!cancelled) dispatch(setRefundLoading(false));
+      });
+
+    return () => { cancelled = true; controller.abort(); };
+  }, [page, perPage, search, statusFilter, refreshKey, dispatch]);
+
+  const handleSearch = useCallback((s: string) => dispatch(setRefundSearch(s)), [dispatch]);
+  const handlePageChange = useCallback((p: number) => dispatch(setRefundPage(p)), [dispatch]);
+  const handlePerPageChange = useCallback((pp: number) => dispatch(setRefundPerPage(pp)), [dispatch]);
 
   const columns: Column[] = [
-    {
-      key: 'id',
-      header: 'ID',
-    },
-    {
-      key: 'transactionId',
-      header: 'Transaction ID',
-    },
-    {
-      key: 'customerName',
-      header: 'Customer Name',
-    },
-    {
-      key: 'amount',
-      header: 'Amount',
-      render: (value) => `$${(value as number).toFixed(2)}`,
-    },
+    { key: 'id', header: 'Refund ID' },
+    { key: 'invoice_id', header: 'Invoice ID' },
+    { key: 'merchant_name', header: 'Merchant' },
+    { key: 'reason', header: 'Reason' },
     {
       key: 'status',
       header: 'Status',
       render: (value) => {
-        const status = value as keyof typeof statusColors;
-        const color = statusColors[status] ?? Colors.textSecondary;
+        const color = statusColors[value as string] ?? Colors.textSecondary;
         return (
           <Box
             as="span"
@@ -112,155 +125,114 @@ const Refund = (): React.JSX.Element => {
         );
       },
     },
-    {
-      key: 'requestDate',
-      header: 'Request Date',
-    },
-    {
-      key: 'reason',
-      header: 'Reason',
-    },
+    { key: 'created_at', header: 'Created At', render: (v) => formatDate(v) },
+    { key: 'updated_at', header: 'Updated At', render: (v) => formatDate(v) },
   ];
 
-  const validateRefundForm = () => {
+  const closeCreateModal = () => {
+    setIsCreateModalOpen(false);
+    setForm(initialForm);
+    setFormErrors({});
+    setCreateApiError('');
+  };
+
+  const validateForm = () => {
     const errors: RefundFormErrors = {};
-    const amount = Number(refundForm.amount);
-
-    if (!refundForm.transactionId.trim()) {
-      errors.transactionId = 'Transaction ID wajib diisi.';
-    }
-
-    if (!refundForm.customerName.trim()) {
-      errors.customerName = 'Customer name wajib diisi.';
-    }
-
-    if (!refundForm.email.trim()) {
-      errors.email = 'Email wajib diisi.';
-    } else if (!isValidEmail(refundForm.email)) {
-      errors.email = 'Format email tidak valid.';
-    }
-
-    if (!refundForm.amount.trim()) {
-      errors.amount = 'Amount wajib diisi.';
-    } else if (Number.isNaN(amount) || amount <= 0) {
-      errors.amount = 'Amount harus lebih dari 0.';
-    }
-
-    if (!refundForm.requestDate) {
-      errors.requestDate = 'Request date wajib diisi.';
-    } else if (!isFutureOrToday(refundForm.requestDate)) {
-      errors.requestDate = 'Request date minimal hari ini.';
-    }
-
-    if (!refundForm.reason.trim()) {
-      errors.reason = 'Reason wajib diisi.';
-    }
-
+    if (!form.invoice_id.trim()) errors.invoice_id = 'Invoice ID wajib diisi.';
+    if (!form.reason.trim()) errors.reason = 'Reason wajib diisi.';
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
 
   const handleCreateRefund = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (!validateForm()) return;
 
-    if (!validateRefundForm()) {
-      await Swal.fire({
-        icon: 'error',
-        title: 'Form belum valid',
-        text: 'Periksa kembali error pada form refund.',
-      });
-      return;
+    setIsSubmitting(true);
+    setCreateApiError('');
+    try {
+      await createRefundApi({ invoice_id: form.invoice_id.trim(), reason: form.reason.trim() });
+      closeCreateModal();
+      setRefreshKey((k) => k + 1);
+      setTimeout(() => {
+        Swal.fire({
+          icon: 'success',
+          title: 'Request refund dibuat',
+          text: 'Refund sudah diajukan dan menunggu review.',
+          confirmButtonColor: Colors.primary,
+        });
+      }, 300);
+    } catch (error) {
+      setCreateApiError(getApiErrorMessage(error));
+    } finally {
+      setIsSubmitting(false);
     }
-
-    const result = await Swal.fire({
-      icon: 'question',
-      title: 'Kirim request refund?',
-      text: 'Request refund akan masuk dengan status Pending.',
-      showCancelButton: true,
-      confirmButtonText: 'Ya, kirim',
-      cancelButtonText: 'Batal',
-      confirmButtonColor: Colors.primary,
-    });
-
-    if (!result.isConfirmed) return;
-
-    const newRefund: RefundRow = {
-      id: createRefundId(refundRows),
-      transactionId: refundForm.transactionId.trim(),
-      customerName: refundForm.customerName.trim(),
-      email: refundForm.email.trim(),
-      amount: Number(refundForm.amount),
-      status: 'Pending',
-      requestDate: refundForm.requestDate,
-      reason: refundForm.reason.trim(),
-    };
-
-    setRefundRows((currentRows) => [newRefund, ...currentRows]);
-    setRefundForm(initialRefundForm);
-    setFormErrors({});
-    setIsCreateModalOpen(false);
-
-    await Swal.fire({
-      icon: 'success',
-      title: 'Request refund dibuat',
-      text: `${newRefund.id} sudah ditambahkan.`,
-      confirmButtonColor: Colors.primary,
-    });
   };
 
-  const handleRefundApproval = async (
-    refund: RefundRow,
-    status: 'Approved' | 'Rejected',
-  ) => {
-    const isApprove = status === 'Approved';
-    const result = await Swal.fire({
-      icon: 'warning',
-      title: `${isApprove ? 'Approve' : 'Reject'} refund?`,
-      text: `${refund.id} akan diubah menjadi ${status}.`,
-      showCancelButton: true,
-      confirmButtonText: isApprove ? 'Ya, approve' : 'Ya, reject',
-      cancelButtonText: 'Batal',
-      confirmButtonColor: isApprove ? Colors.success : Colors.danger,
-    });
-
-    if (!result.isConfirmed) return;
-
-    setRefundRows((currentRows) =>
-      currentRows.map((row) =>
-        row.id === refund.id ? { ...row, status } : row,
-      ),
-    );
+  const closeApprovalModal = () => {
     setSelectedRefund(null);
+    setReviewNote('');
+    setPendingAction(null);
+  };
 
-    await Swal.fire({
-      icon: 'success',
-      title: 'Status refund diperbarui',
-      text: `${refund.id} sekarang ${status}.`,
-      confirmButtonColor: Colors.primary,
-    });
+  const handleConfirmReview = async () => {
+    if (!selectedRefund || !pendingAction) return;
+    const id = selectedRefund.id;
+    const action = pendingAction;
+    const note = reviewNote;
+    closeApprovalModal();
+    try {
+      await reviewRefundApi(id, { action, note });
+      setRefreshKey((k) => k + 1);
+      Swal.fire({
+        icon: 'success',
+        title: 'Status refund diperbarui',
+        text: `Refund berhasil di-${action}.`,
+        confirmButtonColor: Colors.primary,
+      });
+    } catch (error) {
+      Swal.fire({ icon: 'error', title: 'Gagal memperbarui status', text: getApiErrorMessage(error) });
+    }
   };
 
   return (
     <VStack gap={6} align="stretch">
-      <PageHeader
-        title="Refund Management"
-        subtitle="Manage and track refund requests"
-      />
+      <PageHeader title="Refund Management" subtitle="Manage and track refund requests" />
 
-      {!isAdmin && (
-        <Flex justifyContent="end">
+      <Flex justify="space-between" align="center" wrap="wrap" gap={3}>
+        <chakra.select
+          value={statusFilter}
+          onChange={(e) => dispatch(setRefundStatusFilter(e.target.value))}
+          style={{
+            width: '180px',
+            borderRadius: '8px',
+            backgroundColor: '#F8FAFC',
+            borderColor: Colors.borderPrimary,
+            borderStyle: 'solid',
+            borderWidth: '1px',
+            padding: '8px 12px',
+            fontSize: '14px',
+          }}
+        >
+          {REFUND_STATUS_OPTIONS.map((s) => (
+            <option key={s} value={s}>{s || 'Semua Status'}</option>
+          ))}
+        </chakra.select>
+
+        {!isAdmin && (
           <Button
             size="sm"
-            bg={'#2e8c73'}
+            bg="#2e8c73"
             minW={['100%', 125]}
-            borderRadius={'5px'}
+            borderRadius="5px"
+            ml="auto"
             onClick={() => setIsCreateModalOpen(true)}
           >
             <FaPlus />
             Request Refund
           </Button>
-        </Flex>
-      )}
+        )}
+      </Flex>
 
       <Box
         bg={Colors.white}
@@ -270,39 +242,38 @@ const Refund = (): React.JSX.Element => {
         boxShadow={Colors.cardShadow}
       >
         <Table
-          data={paginatedData}
+          data={refunds}
           columns={columns}
-          pagination={pagination}
-          onSearch={onSearch}
-          onPageChange={onPageChange}
-          onPerPageChange={onPerPageChange}
-          actions={
-            isAdmin
-              ? [
-                  {
-                    icon: <FaEdit />,
-                    label: 'Approval',
-                    onClick: (row) => setSelectedRefund(row as RefundRow),
-                    bg: '#de943a',
-                  },
-                ]
-              : undefined
-          }
+          isLoading={isLoading}
+          pagination={{ total, page, perPage, totalPages }}
+          onPageChange={handlePageChange}
+          onPerPageChange={handlePerPageChange}
+          onSearch={handleSearch}
+          actions={[
+            {
+              icon: <FaEdit />,
+              label: 'Review',
+              onClick: (row) => {
+                setSelectedRefund(row as Refund);
+                setReviewNote('');
+                setPendingAction(null);
+              },
+              bg: '#de943a',
+              isVisible: (row) => isAdmin && row.status === 'REQUESTED',
+            },
+          ]}
         />
       </Box>
 
+      {/* Create Refund Modal */}
       <AppModal
         isOpen={isCreateModalOpen}
         title="Request Refund"
-        subtitle="Ajukan refund untuk transaksi customer."
+        subtitle="Ajukan refund untuk invoice yang sudah dibayar."
         onClose={closeCreateModal}
         footer={
           <>
-            <Button
-              variant="outline"
-              borderRadius="xl"
-              onClick={closeCreateModal}
-            >
+            <Button variant="outline" borderRadius="xl" onClick={closeCreateModal}>
               Batal
             </Button>
             <Button
@@ -312,8 +283,9 @@ const Refund = (): React.JSX.Element => {
               bg={Colors.primary}
               color="white"
               _hover={{ bg: Colors.primaryDark }}
+              disabled={isSubmitting}
             >
-              Kirim Request
+              {isSubmitting ? 'Mengajukan...' : 'Kirim Request'}
             </Button>
           </>
         }
@@ -321,218 +293,191 @@ const Refund = (): React.JSX.Element => {
         <form id="create-refund-form" onSubmit={handleCreateRefund}>
           <VStack gap="4" align="stretch">
             <Box>
-              <Text fontSize="sm" mb="2" fontWeight="medium">
-                Transaction ID
-              </Text>
+              <Text fontSize="sm" mb="2" fontWeight="medium">Invoice ID</Text>
               <Input
-                value={refundForm.transactionId}
-                placeholder="TXN123456"
+                value={form.invoice_id}
+                placeholder="UUID invoice yang ingin di-refund"
                 borderRadius="xl"
-                onChange={(event) =>
-                  setRefundForm((current) => ({
-                    ...current,
-                    transactionId: event.target.value,
-                  }))
-                }
+                onChange={(e) => setForm((f) => ({ ...f, invoice_id: e.target.value }))}
               />
-              {formErrors.transactionId && (
-                <Text mt="2" fontSize="sm" color={Colors.danger}>
-                  {formErrors.transactionId}
-                </Text>
+              {formErrors.invoice_id && (
+                <Text mt="2" fontSize="sm" color={Colors.danger}>{formErrors.invoice_id}</Text>
               )}
             </Box>
 
             <Box>
-              <Text fontSize="sm" mb="2" fontWeight="medium">
-                Customer Name
-              </Text>
-              <Input
-                value={refundForm.customerName}
-                placeholder="John Doe"
+              <Text fontSize="sm" mb="2" fontWeight="medium">Alasan Refund</Text>
+              <Textarea
+                value={form.reason}
+                placeholder="Barang tidak sesuai, produk rusak, dll."
                 borderRadius="xl"
-                onChange={(event) =>
-                  setRefundForm((current) => ({
-                    ...current,
-                    customerName: event.target.value,
-                  }))
-                }
-              />
-              {formErrors.customerName && (
-                <Text mt="2" fontSize="sm" color={Colors.danger}>
-                  {formErrors.customerName}
-                </Text>
-              )}
-            </Box>
-
-            <Box>
-              <Text fontSize="sm" mb="2" fontWeight="medium">
-                Email Customer
-              </Text>
-              <Input
-                type="email"
-                value={refundForm.email}
-                placeholder="customer@email.com"
-                borderRadius="xl"
-                onChange={(event) =>
-                  setRefundForm((current) => ({
-                    ...current,
-                    email: event.target.value,
-                  }))
-                }
-              />
-              {formErrors.email && (
-                <Text mt="2" fontSize="sm" color={Colors.danger}>
-                  {formErrors.email}
-                </Text>
-              )}
-            </Box>
-
-            <Box>
-              <Text fontSize="sm" mb="2" fontWeight="medium">
-                Amount
-              </Text>
-              <Input
-                type="number"
-                min="1"
-                value={refundForm.amount}
-                placeholder="150000"
-                borderRadius="xl"
-                onChange={(event) =>
-                  setRefundForm((current) => ({
-                    ...current,
-                    amount: event.target.value,
-                  }))
-                }
-              />
-              {formErrors.amount && (
-                <Text mt="2" fontSize="sm" color={Colors.danger}>
-                  {formErrors.amount}
-                </Text>
-              )}
-            </Box>
-
-            <Box>
-              <Text fontSize="sm" mb="2" fontWeight="medium">
-                Request Date
-              </Text>
-              <Input
-                type="date"
-                min={getTodayDate()}
-                value={refundForm.requestDate}
-                borderRadius="xl"
-                onChange={(event) =>
-                  setRefundForm((current) => ({
-                    ...current,
-                    requestDate: event.target.value,
-                  }))
-                }
-              />
-              {formErrors.requestDate && (
-                <Text mt="2" fontSize="sm" color={Colors.danger}>
-                  {formErrors.requestDate}
-                </Text>
-              )}
-            </Box>
-
-            <Box>
-              <Text fontSize="sm" mb="2" fontWeight="medium">
-                Reason
-              </Text>
-              <Input
-                value={refundForm.reason}
-                placeholder="Product damaged"
-                borderRadius="xl"
-                onChange={(event) =>
-                  setRefundForm((current) => ({
-                    ...current,
-                    reason: event.target.value,
-                  }))
-                }
+                rows={3}
+                onChange={(e) => setForm((f) => ({ ...f, reason: e.target.value }))}
               />
               {formErrors.reason && (
-                <Text mt="2" fontSize="sm" color={Colors.danger}>
-                  {formErrors.reason}
-                </Text>
+                <Text mt="2" fontSize="sm" color={Colors.danger}>{formErrors.reason}</Text>
               )}
             </Box>
+
+            {createApiError && (
+              <Box
+                p="3"
+                borderRadius="xl"
+                bg="#FEF2F2"
+                border="1px solid #FECACA"
+              >
+                <Text fontSize="sm" color={Colors.danger}>{createApiError}</Text>
+              </Box>
+            )}
           </VStack>
         </form>
       </AppModal>
 
+      {/* Approval Modal */}
       <AppModal
         isOpen={Boolean(selectedRefund)}
-        title="Approval Refund"
-        subtitle="Review request refund sebelum approve atau reject."
-        onClose={() => setSelectedRefund(null)}
+        title={
+          pendingAction
+            ? `Konfirmasi ${pendingAction === 'approve' ? 'Approve' : 'Reject'}`
+            : 'Review Refund'
+        }
+        subtitle={
+          pendingAction
+            ? 'Tindakan ini tidak dapat dibatalkan setelah dikonfirmasi.'
+            : 'Review request refund sebelum approve atau reject.'
+        }
+        onClose={closeApprovalModal}
         maxW="720px"
         footer={
-          <>
-            <Button
-              variant="outline"
-              borderRadius="xl"
-              onClick={() => setSelectedRefund(null)}
-            >
-              Tutup
-            </Button>
-            {selectedRefund && (
-              <>
-                <Button
-                  borderRadius="xl"
-                  bg={Colors.danger}
-                  color="white"
-                  _hover={{ bg: '#B91C1C' }}
-                  onClick={() => handleRefundApproval(selectedRefund, 'Rejected')}
-                >
-                  <FaTimes />
-                  Reject
-                </Button>
-                <Button
-                  borderRadius="xl"
-                  bg={Colors.success}
-                  color="white"
-                  _hover={{ bg: '#047857' }}
-                  onClick={() => handleRefundApproval(selectedRefund, 'Approved')}
-                >
-                  <FaCheck />
-                  Approve
-                </Button>
-              </>
-            )}
-          </>
+          pendingAction ? (
+            <>
+              <Button variant="outline" borderRadius="xl" onClick={() => setPendingAction(null)}>
+                Kembali
+              </Button>
+              <Button
+                borderRadius="xl"
+                bg={pendingAction === 'approve' ? Colors.success : Colors.danger}
+                color="white"
+                _hover={{ bg: pendingAction === 'approve' ? '#047857' : '#B91C1C' }}
+                onClick={handleConfirmReview}
+              >
+                {pendingAction === 'approve' ? (
+                  <><Icon as={FaCheck} /> Ya, Approve</>
+                ) : (
+                  <><Icon as={FaTimes} /> Ya, Reject</>
+                )}
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button variant="outline" borderRadius="xl" onClick={closeApprovalModal}>
+                Tutup
+              </Button>
+              {selectedRefund && (
+                <>
+                  <Button
+                    borderRadius="xl"
+                    bg={Colors.danger}
+                    color="white"
+                    _hover={{ bg: '#B91C1C' }}
+                    onClick={() => setPendingAction('reject')}
+                  >
+                    <Icon as={FaTimes} />
+                    Reject
+                  </Button>
+                  <Button
+                    borderRadius="xl"
+                    bg={Colors.success}
+                    color="white"
+                    _hover={{ bg: '#047857' }}
+                    onClick={() => setPendingAction('approve')}
+                  >
+                    <Icon as={FaCheck} />
+                    Approve
+                  </Button>
+                </>
+              )}
+            </>
+          )
         }
       >
-        {selectedRefund && (
-          <Grid templateColumns={{ base: '1fr', md: 'repeat(2, 1fr)' }} gap="4">
-            {[
-              ['Refund ID', selectedRefund.id],
-              ['Transaction ID', selectedRefund.transactionId],
-              ['Customer Name', selectedRefund.customerName],
-              ['Email', selectedRefund.email || '-'],
-              ['Amount', `$${selectedRefund.amount.toFixed(2)}`],
-              ['Status', selectedRefund.status],
-              ['Request Date', selectedRefund.requestDate],
-              ['Reason', selectedRefund.reason],
-            ].map(([label, value]) => (
+        {selectedRefund && !pendingAction && (
+          <VStack gap="4" align="stretch">
+            <Grid templateColumns={{ base: '1fr', md: 'repeat(2, 1fr)' }} gap="4">
+              {(
+                [
+                  ['Refund ID', selectedRefund.id],
+                  ['Invoice ID', selectedRefund.invoice_id],
+                  ['Merchant', selectedRefund.user_name ?? '-'],
+                  ['Status', selectedRefund.status],
+                  ['Created At', formatDate(selectedRefund.created_at)],
+                ] as [string, string][]
+              ).map(([label, value]) => (
+                <Box
+                  key={label}
+                  border={`1px solid ${Colors.borderPrimary}`}
+                  borderRadius="16px"
+                  p="4"
+                  bg={Colors.bgPrimary}
+                >
+                  <Text fontSize="xs" color={Colors.textSecondary}>{label}</Text>
+                  <Text mt="1" fontWeight="700" color={Colors.textPrimary}>{value}</Text>
+                </Box>
+              ))}
               <Box
-                key={label}
                 border={`1px solid ${Colors.borderPrimary}`}
                 borderRadius="16px"
                 p="4"
                 bg={Colors.bgPrimary}
+                gridColumn={{ md: 'span 2' }}
               >
-                <Text fontSize="xs" color={Colors.textSecondary}>
-                  {label}
-                </Text>
-                <Text mt="1" fontWeight="700" color={Colors.textPrimary}>
-                  {value}
-                </Text>
+                <Text fontSize="xs" color={Colors.textSecondary}>Reason</Text>
+                <Text mt="1" fontWeight="700" color={Colors.textPrimary}>{selectedRefund.reason}</Text>
               </Box>
-            ))}
-          </Grid>
+            </Grid>
+            <Box>
+              <Text fontSize="sm" mb="2" fontWeight="medium">Catatan Review</Text>
+              <Textarea
+                value={reviewNote}
+                placeholder="Tulis catatan untuk approval..."
+                borderRadius="xl"
+                onChange={(e) => setReviewNote(e.target.value)}
+              />
+            </Box>
+          </VStack>
+        )}
+
+        {selectedRefund && pendingAction && (
+          <Box
+            bg={pendingAction === 'approve' ? '#F0FDF4' : '#FEF2F2'}
+            border={`1px solid ${pendingAction === 'approve' ? '#BBF7D0' : '#FECACA'}`}
+            borderRadius="16px"
+            p={5}
+            textAlign="center"
+          >
+            <Text fontWeight="600" color={Colors.textPrimary}>
+              Refund dari invoice{' '}
+              <Text as="span" fontWeight="700">{selectedRefund.invoice_id}</Text>
+              {' '}akan di-
+              <Text
+                as="span"
+                fontWeight="700"
+                color={pendingAction === 'approve' ? Colors.success : Colors.danger}
+              >
+                {pendingAction === 'approve' ? 'APPROVE' : 'REJECT'}
+              </Text>
+              .
+            </Text>
+            {reviewNote && (
+              <Text mt={3} fontSize="sm" color={Colors.textSecondary}>
+                Catatan: {reviewNote}
+              </Text>
+            )}
+          </Box>
         )}
       </AppModal>
     </VStack>
   );
 };
 
-export default Refund;
+export default RefundPage;
