@@ -1,75 +1,95 @@
-# React + TypeScript + Vite
+# FE Competency Payment — React
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Frontend aplikasi payment management yang mencakup fitur Invoice, Wallet Top Up, dan Refund.
 
-Currently, two official plugins are available:
+**Repository:**
+- Frontend: https://github.com/RonaldGustavo/FE-Competency-Payment-React
+- Backend: https://github.com/RonaldGustavo/BE-Competency-Payment-Express
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+---
 
-## React Compiler
+## Tech Stack
 
-The React Compiler is enabled on this template. See [this documentation](https://react.dev/learn/react-compiler) for more information.
+| Kategori | Teknologi | Versi |
+|---|---|---|
+| UI Framework | React | ^19.2.5 |
+| Language | TypeScript | ~6.0.2 |
+| Build Tool | Vite | ^8.0.10 |
+| State Management | Redux Toolkit + React Redux | ^2.11.2 / ^9.2.0 |
+| State Persistence | Redux Persist | ^6.0.0 |
+| CSS / UI Library | Chakra UI | ^3.35.0 |
+| HTTP Client | Axios | ^1.15.2 |
+| Routing | React Router DOM | ^7.14.2 |
+| Alert / Dialog | SweetAlert2 | ^11.26.24 |
+| Date Utility | Moment.js | ^2.30.1 |
+| Testing | Vitest + Testing Library | ^4.1.5 / ^16.3.2 |
 
-Note: This will impact Vite dev & build performances.
+---
 
-## Expanding the ESLint configuration
+## Requirements
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+| Tool | Versi Minimum |
+|---|---|
+| Node.js | 18.x |
+| npm | 9.x |
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+---
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+## How to Run
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+### 1. Clone repository
+
+```bash
+git clone https://github.com/RonaldGustavo/FE-Competency-Payment-React.git
+cd FE-Competency-Payment-React
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+### 2. Install dependencies
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
 ```
+
+### 3. Setup environment variable
+
+Buat file `.env` di root project:
+
+```env
+VITE_APP_BASE_URL=http://localhost:3000
+```
+
+Sesuaikan `VITE_APP_BASE_URL` dengan URL backend yang sedang berjalan.
+
+### 4. Jalankan development server
+
+```bash
+npm run dev
+```
+
+Aplikasi akan berjalan di `http://localhost:5173`
+
+### 5. Build untuk production
+
+```bash
+npm run build
+```
+
+---
+
+## Running Tests
+
+```bash
+# Jalankan test dalam watch mode
+npm run test
+
+# Jalankan test sekali + tampilkan coverage
+npm run test:coverage
+```
+
+---
+
+## Backend
+
+Backend menggunakan **Node.js + Express**. Pastikan backend sudah berjalan sebelum menjalankan frontend.
+
+Lihat setup backend di: https://github.com/RonaldGustavo/BE-Competency-Payment-Express
