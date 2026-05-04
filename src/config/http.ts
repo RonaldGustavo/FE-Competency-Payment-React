@@ -1,8 +1,9 @@
 import axios from 'axios';
+import Swal from 'sweetalert2';
 import { store } from './store';
 import { logout } from '../features/auth/AuthSlice';
 import { clearAuthSession, getAuthToken } from '../utils/authToken';
-import { isApiUnauthorizedError } from '../utils/apiError';
+import { getApiErrorMessage, isApiUnauthorizedError } from '../utils/apiError';
 
 const API_BASE_URL = import.meta.env.VITE_APP_BASE_URL;
 const API_TIMEOUT = 15000;
@@ -37,6 +38,17 @@ api.interceptors.response.use(
       clearAuthSession();
       store.dispatch(logout());
       isHandlingUnauthorized = false;
+    }
+
+    const isSilent = (error as any)?.config?.silent === true;
+    const isCancelled = (error as any)?.code === 'ERR_CANCELED';
+
+    if (!isSilent && !isCancelled) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Terjadi Kesalahan',
+        text: getApiErrorMessage(error),
+      });
     }
 
     return Promise.reject(error);

@@ -24,10 +24,9 @@ import moment from 'moment';
 import Swal from 'sweetalert2';
 import Colors from '../../constant/color';
 import { formatRupiah } from '../../utils/validation';
-import { getApiErrorMessage } from '../../utils/apiError';
 import { getInvoiceByTokenApi, payInvoiceApi } from '../../features/invoice/InvoiceService';
 import type { Invoice, PaymentMethodType } from '../../interface/invoice';
-import { statusColors } from '../../constant/status';
+import { getStatusColor } from '../../constant/status';
 
 const formatDate = (value: string | null | undefined) =>
   value ? moment(value).format('DD MMMM YYYY HH:mm:ss') : '-';
@@ -93,12 +92,6 @@ export default function PaymentDetail(): React.JSX.Element {
         title: 'Pembayaran Berhasil',
         text: `Invoice berhasil dibayar menggunakan ${selectedMethod}.`,
         confirmButtonColor: Colors.primary,
-      });
-    } catch (error) {
-      Swal.fire({
-        icon: 'error',
-        title: 'Pembayaran Gagal',
-        text: getApiErrorMessage(error),
       });
     } finally {
       setIsPaying(false);
@@ -170,7 +163,7 @@ export default function PaymentDetail(): React.JSX.Element {
     );
   }
 
-  const statusColor = statusColors[invoice.status] ?? Colors.textSecondary;
+  const statusColor = getStatusColor(invoice.status);
   const TERMINAL_STATUSES = ['Paid', 'Failed', 'Success', 'Expired'];
   const isPaymentDisabled = TERMINAL_STATUSES.includes(invoice.status);
 

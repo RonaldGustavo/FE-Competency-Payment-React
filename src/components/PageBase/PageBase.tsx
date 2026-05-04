@@ -11,7 +11,7 @@ import {
 
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { RiLoginBoxLine } from 'react-icons/ri';
-import { FaBars, FaUserCircle, FaTimes } from 'react-icons/fa';
+import { FaBars, FaUserCircle, FaTimes, FaCreditCard } from 'react-icons/fa';
 
 import Footer from '../Footer/Footer';
 import { useAppDispatch, useAppSelector } from '../../config/hook';
@@ -127,7 +127,7 @@ function PageBase({ userName, userRole }: PageBaseProps): React.JSX.Element {
               fontWeight="700"
               boxShadow={`0 4px 12px 0 ${Colors.primary}40`}
             >
-              💳
+              <FaCreditCard />
             </Box>
             {isSidebarOpen && (
               <Flex direction="column">

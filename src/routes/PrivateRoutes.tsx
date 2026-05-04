@@ -2,7 +2,6 @@ import React from 'react';
 import { Route, Routes, Navigate, useLocation } from 'react-router-dom';
 import { ErrorPage, NotFound, Payment, PaymentDetail } from '../pages';
 import { PageBase } from '../components';
-import Path from '../constant/path';
 import { Menu } from '../constant/menu';
 import { useAppSelector } from '../config/hook';
 
@@ -12,7 +11,7 @@ function PrivateFallback(): React.ReactElement {
   const location = useLocation();
 
   if (authPaths.includes(location.pathname)) {
-    return <Navigate to={`/${Path.dashboard}`} replace />;
+    return <Navigate to={`/dashboard`} replace />;
   }
 
   return <NotFound />;
@@ -25,7 +24,7 @@ function PrivateRoutes(): React.ReactElement {
     <Routes>
       <Route
         path="/"
-        element={<Navigate to={`/${Path.dashboard}`} replace />}
+        element={<Navigate to={`/dashboard`} replace />}
       />
 
       <Route path="/payment" element={<Payment />} />

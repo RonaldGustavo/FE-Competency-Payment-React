@@ -17,7 +17,7 @@ import { FaCheck, FaEdit, FaPlus, FaTimes } from 'react-icons/fa';
 import Table from '../../components/Table/Table';
 import Colors from '../../constant/color';
 import type { Column } from '../../interface/global';
-import { statusColors } from '../../constant/status';
+import { getStatusColor } from '../../constant/status';
 import PageHeader from '../../components/PageHeader/PageHeader';
 import AppModal from '../../components/AppModal/AppModal';
 import { useAppSelector, useAppDispatch } from '../../config/hook';
@@ -83,10 +83,8 @@ const RefundPage = (): React.JSX.Element => {
           totalPages: result.pagination.total_pages,
         }));
       })
-      .catch((error) => {
+      .catch(() => {
         if (cancelled) return;
-        if ((error as any)?.code === 'ERR_CANCELED') return;
-        Swal.fire({ icon: 'error', title: 'Gagal memuat data', text: getApiErrorMessage(error) });
       })
       .finally(() => {
         if (!cancelled) dispatch(setRefundLoading(false));
@@ -100,15 +98,16 @@ const RefundPage = (): React.JSX.Element => {
   const handlePerPageChange = useCallback((pp: number) => dispatch(setRefundPerPage(pp)), [dispatch]);
 
   const columns: Column[] = [
-    { key: 'id', header: 'Refund ID' },
-    { key: 'invoice_id', header: 'Invoice ID' },
+    { key: 'id', header: 'No Refund' },
+    { key: 'invoice_id', header: 'No Invoice' },
     { key: 'merchant_name', header: 'Merchant' },
+    { key: 'amount', header: 'Amount' },
     { key: 'reason', header: 'Reason' },
     {
       key: 'status',
       header: 'Status',
       render: (value) => {
-        const color = statusColors[value as string] ?? Colors.textSecondary;
+        const color = getStatusColor(value as string);
         return (
           <Box
             as="span"
@@ -190,8 +189,8 @@ const RefundPage = (): React.JSX.Element => {
         text: `Refund berhasil di-${action}.`,
         confirmButtonColor: Colors.primary,
       });
-    } catch (error) {
-      Swal.fire({ icon: 'error', title: 'Gagal memperbarui status', text: getApiErrorMessage(error) });
+    } catch {
+      // handled by global interceptor
     }
   };
 
@@ -406,10 +405,11 @@ const RefundPage = (): React.JSX.Element => {
             <Grid templateColumns={{ base: '1fr', md: 'repeat(2, 1fr)' }} gap="4">
               {(
                 [
-                  ['Refund ID', selectedRefund.id],
-                  ['Invoice ID', selectedRefund.invoice_id],
+                  ['No Refund', selectedRefund.id],
+                  ['No Invoice', selectedRefund.invoice_id],
                   ['Merchant', selectedRefund.user_name ?? '-'],
                   ['Status', selectedRefund.status],
+                  ['Amount', selectedRefund.amount],
                   ['Created At', formatDate(selectedRefund.created_at)],
                 ] as [string, string][]
               ).map(([label, value]) => (

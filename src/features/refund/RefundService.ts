@@ -20,7 +20,7 @@ export const getRefundsApi = async (params?: GetRefundsParams, signal?: AbortSig
 };
 
 export const createRefundApi = async (payload: CreateRefundPayload) => {
-  const response = await api.post<RefundResponse>(ApiEndpoint.refund.create, payload);
+  const response = await api.post<RefundResponse>(ApiEndpoint.refund.create, payload, { silent: true } as any);
   return response.data.data.refund;
 };
 

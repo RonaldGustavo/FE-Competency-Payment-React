@@ -14,7 +14,7 @@ import Swal from 'sweetalert2';
 import Table from '../../components/Table/Table';
 import Colors from '../../constant/color';
 import type { Column } from '../../interface/global';
-import { statusColors } from '../../constant/status';
+import { getStatusColor } from '../../constant/status';
 import PageHeader from '../../components/PageHeader/PageHeader';
 import { FaCheck, FaEdit, FaPlus, FaTimes } from 'react-icons/fa';
 import AppModal from '../../components/AppModal/AppModal';
@@ -33,7 +33,6 @@ import {
   setWalletPerPage,
   setWalletSearch,
 } from '../../features/wallet/WalletSlice';
-import { getApiErrorMessage } from '../../utils/apiError';
 
 const formatDate = (value: string | null | undefined) =>
   value ? moment(value).format('DD MMMM YYYY HH:mm:ss') : '-';
@@ -74,14 +73,8 @@ const Wallet = (): React.JSX.Element => {
           }),
         );
       })
-      .catch((error) => {
+      .catch(() => {
         if (cancelled) return;
-        if ((error as any)?.code === 'ERR_CANCELED') return;
-        Swal.fire({
-          icon: 'error',
-          title: 'Gagal memuat data',
-          text: getApiErrorMessage(error),
-        });
       })
       .finally(() => {
         if (!cancelled) dispatch(setWalletLoading(false));
@@ -117,8 +110,7 @@ const Wallet = (): React.JSX.Element => {
       key: 'status',
       header: 'Status',
       render: (value) => {
-        const status = value as keyof typeof statusColors;
-        const color = statusColors[status] ?? Colors.textSecondary;
+        const color = getStatusColor(value as string);
         return (
           <Box
             as="span"
@@ -182,12 +174,6 @@ const Wallet = (): React.JSX.Element => {
         text: 'Permintaan top up sedang menunggu proses.',
         confirmButtonColor: Colors.primary,
       });
-    } catch (error) {
-      Swal.fire({
-        icon: 'error',
-        title: 'Gagal mengajukan top up',
-        text: getApiErrorMessage(error),
-      });
     } finally {
       setIsSubmitting(false);
     }
@@ -217,12 +203,8 @@ const Wallet = (): React.JSX.Element => {
         text: `Top up berhasil di-${action}.`,
         confirmButtonColor: Colors.primary,
       });
-    } catch (error) {
-      Swal.fire({
-        icon: 'error',
-        title: 'Gagal memperbarui status',
-        text: getApiErrorMessage(error),
-      });
+    } catch {
+      // handled by global interceptor
     }
   };
 

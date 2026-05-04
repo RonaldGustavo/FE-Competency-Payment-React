@@ -8,12 +8,12 @@ import type {
 } from '../../interface/auth';
 
 export const loginApi = async (payload: LoginPayload) => {
-  const response = await api.post<LoginResponse>(ApiEndpoint.auth.login, payload);
+  const response = await api.post<LoginResponse>(ApiEndpoint.auth.login, payload, { silent: true } as any);
   return response.data.data.token;
 };
 
 export const signUpApi = async (payload: SignUpPayload) => {
-  await api.post(ApiEndpoint.auth.signup, payload);
+  await api.post(ApiEndpoint.auth.signup, payload, { silent: true } as any);
 };
 
 export const getProfileApi = async () => {

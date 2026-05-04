@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { Box, Grid, GridItem, Skeleton } from '@chakra-ui/react';
 import {
   FaFileInvoice,
@@ -8,7 +8,6 @@ import {
   FaExchangeAlt,
   FaUndoAlt,
 } from 'react-icons/fa';
-import Swal from 'sweetalert2';
 import StatsCard from '../../components/StatsCard/StatsCard';
 import WelcomeCard from '../../components/WelcomeCard/WelcomeCard';
 import Colors from '../../constant/color';
@@ -16,7 +15,6 @@ import { useAppSelector, useAppDispatch } from '../../config/hook';
 import { getDashboardSummaryApi } from '../../features/dashboard/DashboardService';
 import { setDashboardLoading, setDashboardSummary } from '../../features/dashboard/DashboardSlice';
 import { formatRupiah } from '../../utils/validation';
-import { getApiErrorMessage } from '../../utils/apiError';
 
 const Dashboard = () => {
   const dispatch = useAppDispatch();
@@ -33,10 +31,8 @@ const Dashboard = () => {
         if (cancelled) return;
         dispatch(setDashboardSummary(data));
       })
-      .catch((error) => {
+      .catch(() => {
         if (cancelled) return;
-        if ((error as any)?.code === 'ERR_CANCELED') return;
-        Swal.fire({ icon: 'error', title: 'Gagal memuat dashboard', text: getApiErrorMessage(error) });
       })
       .finally(() => {
         if (!cancelled) dispatch(setDashboardLoading(false));

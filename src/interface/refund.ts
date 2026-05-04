@@ -9,6 +9,7 @@ export interface Refund {
   status: string;
   note?: string | null;
   created_at: string;
+  amount?: number;
   updated_at?: string | null;
 }
 

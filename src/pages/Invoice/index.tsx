@@ -13,7 +13,7 @@ import Swal from 'sweetalert2';
 import Table from '../../components/Table/Table';
 import Colors from '../../constant/color';
 import type { Column } from '../../interface/global';
-import { statusColors } from '../../constant/status';
+import { getStatusColor } from '../../constant/status';
 import PageHeader from '../../components/PageHeader/PageHeader';
 import { FaEye, FaPlus, FaTrash } from 'react-icons/fa';
 import AppModal from '../../components/AppModal/AppModal';
@@ -34,10 +34,9 @@ import {
   setInvoiceSearch,
   setInvoiceStatusFilter,
 } from '../../features/invoice/InvoiceSlice';
-import { getApiErrorMessage } from '../../utils/apiError';
 import InvoiceActionModal from './InvoiceActionModal';
 
-const INVOICE_STATUS_OPTIONS = ['', 'Pending', 'Failed', 'Paid', 'Expired'] as const;
+const INVOICE_STATUS_OPTIONS = ['', 'Pending', 'Failed', 'Paid', 'Expired', 'Refund'] as const;
 
 const formatDate = (value: string | null | undefined) =>
   value ? moment(value).format('DD MMMM YYYY HH:mm:ss') : '-';
@@ -86,10 +85,8 @@ const InvoicePage = (): React.JSX.Element => {
           totalPages: result.pagination.total_pages,
         }));
       })
-      .catch((error) => {
+      .catch(() => {
         if (cancelled) return;
-        if ((error as any)?.code === 'ERR_CANCELED') return;
-        Swal.fire({ icon: 'error', title: 'Gagal memuat data', text: getApiErrorMessage(error) });
       })
       .finally(() => {
         if (!cancelled) dispatch(setInvoiceLoading(false));
@@ -111,12 +108,12 @@ const InvoicePage = (): React.JSX.Element => {
       render: (value) => formatRupiah(Number(value)),
     },
     { key: 'description', header: 'Deskripsi' },
-    { key: 'payment_type', header: 'Type' },
+    { key: 'payment_type', header: 'Payment Type' },
     {
       key: 'status',
       header: 'Status',
       render: (value) => {
-        const color = statusColors[value as string] ?? Colors.textSecondary;
+        const color = getStatusColor(value as string);
         return (
           <Box
             as="span"
@@ -186,8 +183,6 @@ const InvoicePage = (): React.JSX.Element => {
         text: 'Invoice sudah ditambahkan.',
         confirmButtonColor: Colors.primary,
       });
-    } catch (error) {
-      Swal.fire({ icon: 'error', title: 'Gagal membuat invoice', text: getApiErrorMessage(error) });
     } finally {
       setIsSubmitting(false);
     }
@@ -209,9 +204,7 @@ const InvoicePage = (): React.JSX.Element => {
           confirmButtonColor: Colors.primary,
         });
       })
-      .catch((error) => {
-        Swal.fire({ icon: 'error', title: 'Gagal memperbarui status', text: getApiErrorMessage(error) });
-      });
+      .catch(() => {});
   };
 
   const handleDelete = async (invoice: Invoice) => {
@@ -235,8 +228,8 @@ const InvoicePage = (): React.JSX.Element => {
         title: 'Invoice dihapus',
         confirmButtonColor: Colors.primary,
       });
-    } catch (error) {
-      Swal.fire({ icon: 'error', title: 'Gagal menghapus invoice', text: getApiErrorMessage(error) });
+    } catch {
+      // handled by global interceptor
     }
   };
 
@@ -360,7 +353,7 @@ const InvoicePage = (): React.JSX.Element => {
               <Text fontSize="sm" mb="2" fontWeight="medium">Deskripsi</Text>
               <Input
                 value={form.description}
-                placeholder="Jasa desain logo"
+                placeholder="Masukan Deskripsi"
                 borderRadius="xl"
                 onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
               />

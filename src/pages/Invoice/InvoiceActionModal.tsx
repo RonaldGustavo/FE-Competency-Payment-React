@@ -14,7 +14,7 @@ import { FaCheck, FaCopy, FaFileInvoiceDollar, FaTimes } from 'react-icons/fa';
 import moment from 'moment';
 import AppModal from '../../components/AppModal/AppModal';
 import Colors from '../../constant/color';
-import { statusColors } from '../../constant/status';
+import { getStatusColor } from '../../constant/status';
 import { formatRupiah } from '../../utils/validation';
 import type { Invoice } from '../../interface/invoice';
 
@@ -79,7 +79,7 @@ export default function InvoiceActionModal({
 
   if (!invoice) return null;
 
-  const statusColor = statusColors[invoice.status] ?? Colors.textSecondary;
+  const statusColor = getStatusColor(invoice.status);
   const canApprove = isAdmin && invoice.status === 'Pending';
 
   const handleClose = () => {
@@ -106,7 +106,7 @@ export default function InvoiceActionModal({
       subtitle={
         pendingAction
           ? 'Tindakan ini tidak dapat dibatalkan setelah dikonfirmasi.'
-          : 'Informasi invoice dan approval dalam satu modal.'
+          : 'Informasi invoice'
       }
       onClose={handleClose}
       maxW="760px"
