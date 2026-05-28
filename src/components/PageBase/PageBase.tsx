@@ -266,7 +266,7 @@ function PageBase({ userName, userRole }: PageBaseProps): React.JSX.Element {
                 Balance
               </Text>
               <Text fontSize="lg" fontWeight="700">
-               Rp. {walletBalance}
+               Rp. {new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 }).format(Number(walletBalance) || 0)}
               </Text>
             </Box>
           </Box>

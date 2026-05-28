@@ -15,14 +15,13 @@ import Colors from '../../constant/color';
 import type { Column } from '../../interface/global';
 import { getStatusColor } from '../../constant/status';
 import PageHeader from '../../components/PageHeader/PageHeader';
-import { FaEye, FaPlus, FaTrash } from 'react-icons/fa';
+import { FaEye, FaPlus } from 'react-icons/fa';
 import AppModal from '../../components/AppModal/AppModal';
 import { formatRupiah, getNowDatetime } from '../../utils/validation';
 import { useAppSelector, useAppDispatch } from '../../config/hook';
 import type { Invoice } from '../../interface/invoice';
 import {
   createInvoiceApi,
-  deleteInvoiceApi,
   getInvoicesApi,
   reviewInvoiceApi,
 } from '../../features/invoice/InvoiceService';
@@ -207,32 +206,6 @@ const InvoicePage = (): React.JSX.Element => {
       .catch(() => {});
   };
 
-  const handleDelete = async (invoice: Invoice) => {
-    const result = await Swal.fire({
-      icon: 'warning',
-      title: 'Hapus invoice?',
-      text: 'Invoice akan dihapus secara permanen.',
-      showCancelButton: true,
-      confirmButtonText: 'Ya, hapus',
-      cancelButtonText: 'Batal',
-      confirmButtonColor: Colors.danger,
-    });
-
-    if (!result.isConfirmed) return;
-
-    try {
-      await deleteInvoiceApi(invoice.id);
-      setRefreshKey((k) => k + 1);
-      Swal.fire({
-        icon: 'success',
-        title: 'Invoice dihapus',
-        confirmButtonColor: Colors.primary,
-      });
-    } catch {
-      // handled by global interceptor
-    }
-  };
-
   return (
     <VStack gap={6} align="stretch">
       <PageHeader
@@ -297,13 +270,6 @@ const InvoicePage = (): React.JSX.Element => {
               onClick: (row) => setSelectedInvoice(row as Invoice),
               bg: '#4253d1',
             },
-            {
-              icon: <FaTrash />,
-              label: 'Hapus',
-              onClick: (row) => handleDelete(row as Invoice),
-              bg: Colors.danger,
-              isVisible: () => isAdmin,
-            },
           ]}
         />
       </Box>
@@ -337,12 +303,14 @@ const InvoicePage = (): React.JSX.Element => {
             <Box>
               <Text fontSize="sm" mb="2" fontWeight="medium">Amount</Text>
               <Input
-                type="number"
-                min="1"
+                type="text"
+                inputMode="numeric"
                 value={form.amount}
                 placeholder="500000"
                 borderRadius="xl"
-                onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, amount: e.target.value.replace(/\D/g, '') }))
+                }
               />
               {formErrors.amount && (
                 <Text mt="2" fontSize="sm" color={Colors.danger}>{formErrors.amount}</Text>

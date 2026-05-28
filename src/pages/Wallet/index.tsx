@@ -302,12 +302,14 @@ const Wallet = (): React.JSX.Element => {
                 Amount
               </Text>
               <Input
-                type="number"
-                min="1"
+                type="text"
+                inputMode="numeric"
                 value={amount}
                 placeholder="500000"
                 borderRadius="xl"
-                onChange={(event) => setAmount(event.target.value)}
+                onChange={(event) =>
+                  setAmount(event.target.value.replace(/\D/g, ''))
+                }
               />
               {amountError && (
                 <Text mt="2" fontSize="sm" color={Colors.danger}>
