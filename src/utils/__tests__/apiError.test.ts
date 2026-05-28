@@ -15,10 +15,6 @@ const makeAxiosError = (statusCode: number, systemMessage?: string) => {
 };
 
 describe('getApiErrorMessage', () => {
-  it('returns system_message from axios error response', () => {
-    const error = makeAxiosError(400, 'Email sudah terdaftar');
-    expect(getApiErrorMessage(error)).toBe('Email sudah terdaftar');
-  });
 
   it('returns fallback when no system_message', () => {
     const error = makeAxiosError(500);
@@ -33,6 +29,11 @@ describe('getApiErrorMessage', () => {
   it('returns fallback for unknown error type', () => {
     expect(getApiErrorMessage('unknown')).toBe('Terjadi kesalahan. Silakan coba lagi.');
     expect(getApiErrorMessage(null)).toBe('Terjadi kesalahan. Silakan coba lagi.');
+  });
+
+  it('returns system_message from axios error response', () => {
+    const error = makeAxiosError(400, 'Email sudah terdaftar');
+    expect(getApiErrorMessage(error)).toBe('Email sudah terdaftar');
   });
 });
 

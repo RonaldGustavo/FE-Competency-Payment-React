@@ -42,6 +42,18 @@ const REFUND_STATUS_OPTIONS = ['', 'REQUESTED', 'APPROVED', 'REJECTED'] as const
 const formatDate = (value: string | null | undefined) =>
   value ? moment(value).format('DD MMMM YYYY HH:mm:ss') : '-';
 
+const formatAmount = (value: unknown) => {
+  if (value === null || value === undefined || value === '') return '-';
+  const num = Number(value);
+  if (Number.isNaN(num)) return '-';
+  return new Intl.NumberFormat('id-ID', {
+    style: 'currency',
+    currency: 'IDR',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(num);
+};
+
 interface RefundForm {
   invoice_id: string;
   reason: string;
@@ -101,7 +113,7 @@ const RefundPage = (): React.JSX.Element => {
     { key: 'id', header: 'No Refund' },
     { key: 'invoice_id', header: 'No Invoice' },
     { key: 'merchant_name', header: 'Merchant' },
-    { key: 'amount', header: 'Amount' },
+    { key: 'amount', header: 'Amount', render: (v) => formatAmount(v) },
     { key: 'reason', header: 'Reason' },
     {
       key: 'status',
@@ -409,7 +421,7 @@ const RefundPage = (): React.JSX.Element => {
                   ['No Invoice', selectedRefund.invoice_id],
                   ['Merchant', selectedRefund.user_name ?? '-'],
                   ['Status', selectedRefund.status],
-                  ['Amount', selectedRefund.amount],
+                  ['Amount', formatAmount(selectedRefund.amount)],
                   ['Created At', formatDate(selectedRefund.created_at)],
                 ] as [string, string][]
               ).map(([label, value]) => (
