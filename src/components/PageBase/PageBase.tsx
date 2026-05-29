@@ -93,9 +93,22 @@ function PageBase({ userName, userRole }: PageBaseProps): React.JSX.Element {
 
   return (
     <Flex h="100vh" bg={Colors.bgPrimary} overflow="hidden">
+      {isMobile && isSidebarOpen && (
+        <Box
+          position="fixed"
+          top={0}
+          left={0}
+          right={0}
+          bottom={0}
+          bg="rgba(0, 0, 0, 0.5)"
+          zIndex={15}
+          onClick={handleToggleSidebar}
+        />
+      )}
+
       {/* //NOTE - Sidebar */}
       <Box
-        w={isMobile ? '0px' : isSidebarOpen ? '280px' : '90px'}
+        w={isMobile ? (isSidebarOpen ? '280px' : '0px') : isSidebarOpen ? '280px' : '90px'}
         bg={`linear-gradient(180deg, ${Colors.sidebarBg} 0%, #000000 100%)`}
         color="white"
         transition="width 0.3s cubic-bezier(0.4, 0, 0.2, 1)"
